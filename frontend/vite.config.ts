@@ -16,7 +16,6 @@ function normalizeBase(raw: string | undefined): string {
  * /shop (and friends) return 200, and keep 404.html for /product/:slug.
  */
 const SPA_FALLBACK_PAGES = [
-  '404.html',
   'shop/index.html',
   'cart/index.html',
   'checkout/index.html',
@@ -39,7 +38,9 @@ function githubPagesSpaFallback(): Plugin {
       for (const page of SPA_FALLBACK_PAGES) {
         const target = resolve('dist', page)
         mkdirSync(dirname(target), { recursive: true })
-        copyFileSync(indexHtml, target)
+        if (!existsSync(target)) {
+          copyFileSync(indexHtml, target)
+        }
       }
     }
   }

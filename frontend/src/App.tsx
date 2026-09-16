@@ -114,17 +114,39 @@ function Shop({ token }: { token: string }) {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [category, setCategory] = useState('')
+  const [loadError, setLoadError] = useState<string>('')
 
   useEffect(() => {
-    api.get<Category[]>('/api/categories').then(setCategories)
+    api.get<Category[]>('/api/categories')
+      .then((data) => {
+        setCategories(data)
+        setLoadError('')
+      })
+      .catch(() => {
+        setCategories([])
+        setLoadError('Unable to load categories. Verify gateway/API base is reachable.')
+      })
   }, [])
   useEffect(() => {
     const q = category ? `?category=${category}` : ''
-    api.get<Product[]>(`/api/products${q}`).then(setProducts)
+    api.get<Product[]>(`/api/products${q}`)
+      .then((data) => {
+        setProducts(data)
+        setLoadError('')
+      })
+      .catch(() => {
+        setProducts([])
+        setLoadError('Unable to load products. Verify gateway/API base is reachable.')
+      })
   }, [category])
 
   return (
     <div>
+      {loadError ? (
+        <div className="mb-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {loadError}
+        </div>
+      ) : null}
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Shop</h2>
         <select className="rounded border p-2" value={category} onChange={(e) => setCategory(e.target.value)}>
