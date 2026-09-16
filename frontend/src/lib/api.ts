@@ -1,6 +1,20 @@
 import { useAuthStore, type AuthUser } from '../store/authStore'
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
+export function resolveApiBase(raw: string | undefined): string {
+  const value = (raw ?? '').trim().replace(/\/+$/, '')
+  if (!value) return '/api'
+  if (value === '/api' || value.endsWith('/api')) return value
+  return `${value}/api`
+}
+
+const API_BASE = resolveApiBase(import.meta.env.VITE_API_BASE)
+
+export function joinApiPath(path: string, base = API_BASE): string {
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  const prefix = base.replace(/\/+$/, '')
+  const suffix = path.startsWith('/') ? path : `/${path}`
+  return `${prefix}${suffix}`
+}
 
 export class ApiError extends Error {
   status: number
@@ -25,11 +39,6 @@ type MessageResponse = {
 
 let refreshPromise: Promise<string | null> | null = null
 
-function joinApiPath(path: string): string {
-  if (path.startsWith('http://') || path.startsWith('https://')) return path
-  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`
-}
-
 function mapAuthUser(payload: { userId: string; email: string; name: string; roles: string[]; avatar?: string | null }): AuthUser {
   return {
     userId: payload.userId,
@@ -41,6 +50,12 @@ function mapAuthUser(payload: { userId: string; email: string; name: string; rol
 }
 
 async function parseError(response: Response): Promise<ApiError> {
+  if (response.status === 405) {
+    return new ApiError(
+      'This static host does not accept API writes. Use the local Vite app (proxy /api → gateway) or set VITE_API_BASE to a public gateway.',
+      405
+    )
+  }
   try {
     const body = await response.json()
     const detail = typeof body?.detail === 'string' ? body.detail : `Request failed (${response.status})`

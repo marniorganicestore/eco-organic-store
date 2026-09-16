@@ -44,7 +44,9 @@ jobs:
         env:
           # Custom domain serves at / . Set repo variable VITE_BASE_PATH=/harvest-co/ only for project-site URLs.
           VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || '/' }}
-          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+          # Unset GitHub vars become "" and would strip the /api prefix. Point this
+          # at a public gateway (host or host/api) when Pages should call a live API.
+          VITE_API_BASE: ${{ vars.VITE_API_BASE || '/api' }}
 
       - name: Verify SPA fallbacks
         run: |

@@ -36,6 +36,7 @@ function githubPagesSpaFallback(): Plugin {
         return
       }
       writeFileSync(resolve('dist/.nojekyll'), '')
+      copyFileSync(indexHtml, resolve('dist/404.html'))
       for (const page of SPA_FALLBACK_PAGES) {
         const target = resolve('dist', page)
         mkdirSync(dirname(target), { recursive: true })
@@ -47,12 +48,15 @@ function githubPagesSpaFallback(): Plugin {
   }
 }
 
+const apiProxy = { '/api': 'http://localhost:8080' }
+
 export default defineConfig({
   base: normalizeBase(process.env.VITE_BASE_PATH),
   plugins: [react(), tailwindcss(), githubPagesSpaFallback()],
   server: {
-    proxy: {
-      '/api': 'http://localhost:8080'
-    }
+    proxy: apiProxy
+  },
+  preview: {
+    proxy: apiProxy
   }
 })
