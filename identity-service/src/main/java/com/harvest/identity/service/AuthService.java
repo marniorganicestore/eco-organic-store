@@ -4,12 +4,17 @@ import com.harvest.common.security.JwtService;
 import com.harvest.identity.domain.User;
 import com.harvest.identity.repo.UserRepository;
 import com.harvest.identity.web.AuthDtos.AuthResponse;
+import com.harvest.identity.web.AuthDtos.ConfirmResetRequest;
 import com.harvest.identity.web.AuthDtos.LoginRequest;
+import com.harvest.identity.web.AuthDtos.MessageResponse;
 import com.harvest.identity.web.AuthDtos.ProfileRequest;
+import com.harvest.identity.web.AuthDtos.RequestResetRequest;
 import com.harvest.identity.web.AuthDtos.RegisterRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +23,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthService {
     private static final Duration REFRESH_TTL = Duration.ofDays(7);
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder encoder;
@@ -95,6 +101,19 @@ public class AuthService {
 
     public List<User> allUsers() {
         return userRepository.findAll();
+    }
+
+    public MessageResponse requestPasswordReset(RequestResetRequest request) {
+        // Intentionally generic: never reveal whether email exists.
+        userRepository.findByEmail(request.email().toLowerCase())
+                .ifPresent(user -> log.info("Password reset requested for existing account userId={}", user.getId()));
+        return new MessageResponse("If an account exists, password reset instructions will be sent.");
+    }
+
+    public MessageResponse confirmPasswordReset(ConfirmResetRequest request) {
+        // Shell flow only in v1: token plumbing/email integration comes later.
+        log.info("Password reset confirmation requested.");
+        return new MessageResponse("Password reset request accepted.");
     }
 
     private AuthResponse issueTokens(User user, HttpServletResponse response) {

@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
+import { authApi, api } from './lib/api'
+import { RequireAdmin, RequireAuth } from './components/auth/RequireAuth'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import { useAuthStore } from './store/authStore'
 
 type Product = {
   id: string
@@ -33,27 +39,16 @@ const useCartStore = create<CartState>((set) => ({
   setItems: (items) => set({ items })
 }))
 
-const apiRoot = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '')
-
-const api = {
-  async get<T>(url: string, token?: string): Promise<T> {
-    const res = await fetch(`${apiRoot}${url}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-    if (!res.ok) throw new Error(await res.text())
-    return res.json()
-  },
-  async send<T>(url: string, method: string, body?: unknown, token?: string): Promise<T> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(`${apiRoot}${url}`, { method, headers, body: body ? JSON.stringify(body) : undefined, credentials: 'include' })
-    if (!res.ok) throw new Error(await res.text())
-    if (res.status === 204) return undefined as T
-    return res.json()
-  }
-}
-
 function Layout({ children }: { children: React.ReactNode }) {
+  const user = useAuthStore((state) => state.user)
   const { items } = useCartStore()
   const qty = items.reduce((sum, i) => sum + i.qty, 0)
+  const isAdmin = user?.roles.includes('ADMIN') ?? false
+
+  async function logout() {
+    await authApi.logout()
+  }
+
   return (
     <div className="min-h-screen bg-[#f8f6f1] text-slate-800">
       <header className="sticky top-0 z-20 border-b border-emerald-100 bg-[#f8f6f1]/95 backdrop-blur">
@@ -62,8 +57,13 @@ function Layout({ children }: { children: React.ReactNode }) {
           <nav className="flex gap-4 text-sm">
             <Link to="/shop">Shop</Link>
             <Link to="/account/orders">Orders</Link>
-            <Link to="/admin">Admin</Link>
+            {isAdmin ? <Link to="/admin">Admin</Link> : null}
             <Link to="/cart">Cart ({qty})</Link>
+            {user ? (
+              <button className="rounded border border-emerald-700 px-2 py-1 text-emerald-900" onClick={logout}>Logout</button>
+            ) : (
+              <Link to="/login">Login</Link>
+            )}
           </nav>
         </div>
       </header>
@@ -73,24 +73,29 @@ function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const [token, setToken] = useState<string>('')
+  const bootstrapped = useAuthStore((state) => state.bootstrapped)
+
   useEffect(() => {
     localStorage.setItem('guestToken', useCartStore.getState().guestToken)
+    authApi.bootstrapSession()
   }, [])
+
+  if (!bootstrapped) return <Layout><div className="p-6 text-sm text-slate-600">Restoring session...</div></Layout>
 
   return (
     <Layout>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/shop" element={<Shop token={token} />} />
-        <Route path="/product/:slug" element={<ProductPage token={token} />} />
-        <Route path="/cart" element={<CartPage token={token} />} />
-        <Route path="/checkout" element={<CheckoutPage token={token} />} />
+        <Route path="/shop" element={<Shop />} />
+        <Route path="/product/:slug" element={<ProductPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
         <Route path="/order/success" element={<OrderSuccess />} />
-        <Route path="/account/orders" element={<Orders token={token} />} />
-        <Route path="/login" element={<Login setToken={setToken} />} />
-        <Route path="/register" element={<Register setToken={setToken} />} />
-        <Route path="/admin" element={<Admin token={token} />} />
+        <Route path="/account/orders" element={<RequireAuth><Orders /></RequireAuth>} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
@@ -110,14 +115,14 @@ function Home() {
   )
 }
 
-function Shop({ token }: { token: string }) {
+function Shop() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [category, setCategory] = useState('')
   const [loadError, setLoadError] = useState<string>('')
 
   useEffect(() => {
-    api.get<Category[]>('/api/categories')
+    api.get<Category[]>('/categories')
       .then((data) => {
         setCategories(data)
         setLoadError('')
@@ -129,7 +134,7 @@ function Shop({ token }: { token: string }) {
   }, [])
   useEffect(() => {
     const q = category ? `?category=${category}` : ''
-    api.get<Product[]>(`/api/products${q}`)
+    api.get<Product[]>(`/products${q}`)
       .then((data) => {
         setProducts(data)
         setLoadError('')
@@ -155,16 +160,16 @@ function Shop({ token }: { token: string }) {
         </select>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((p) => <ProductCard key={p.id} p={p} token={token} />)}
+        {products.map((p) => <ProductCard key={p.id} p={p} />)}
       </div>
     </div>
   )
 }
 
-function ProductCard({ p, token }: { p: Product; token: string }) {
+function ProductCard({ p }: { p: Product }) {
   const { guestToken, setItems } = useCartStore()
   async function add() {
-    const cart = await api.send<{ items: CartItem[] }>(`/api/cart?guestToken=${guestToken}`, 'POST', { productId: p.id, qty: 1 }, token)
+    const cart = await api.post<{ items: CartItem[] }>(`/cart?guestToken=${guestToken}`, { productId: p.id, qty: 1 })
     setItems(cart.items)
   }
   return (
@@ -180,15 +185,15 @@ function ProductCard({ p, token }: { p: Product; token: string }) {
   )
 }
 
-function ProductPage({ token }: { token: string }) {
+function ProductPage() {
   const { slug } = useParams()
   const [product, setProduct] = useState<Product | null>(null)
   const [reviews, setReviews] = useState<any[]>([])
   useEffect(() => {
-    api.get<Product>(`/api/products/${slug}`).then(setProduct)
+    api.get<Product>(`/products/${slug}`).then(setProduct)
   }, [slug])
   useEffect(() => {
-    if (product) api.get<any[]>(`/api/products/${product.id}/reviews`).then(setReviews)
+    if (product) api.get<any[]>(`/products/${product.id}/reviews`).then(setReviews)
   }, [product])
   if (!product) return <p>Loading...</p>
   return (
@@ -198,7 +203,7 @@ function ProductPage({ token }: { token: string }) {
         <h2 className="text-3xl font-semibold">{product.name}</h2>
         <p className="text-slate-600">{product.description}</p>
         <p className="my-3 text-xl font-semibold">₹{(product.pricePaise / 100).toFixed(2)}</p>
-        <ProductCard p={product} token={token} />
+        <ProductCard p={product} />
       </div>
       <div className="md:col-span-2">
         <h3 className="mb-2 text-xl font-semibold">Reviews</h3>
@@ -208,12 +213,12 @@ function ProductPage({ token }: { token: string }) {
   )
 }
 
-function CartPage({ token }: { token: string }) {
+function CartPage() {
   const { guestToken, items, setItems } = useCartStore()
   const navigate = useNavigate()
   useEffect(() => {
-    api.get<{ items: CartItem[] }>(`/api/cart?guestToken=${guestToken}`, token).then((c) => setItems(c.items || []))
-  }, [guestToken, setItems, token])
+    api.get<{ items: CartItem[] }>(`/cart?guestToken=${guestToken}`).then((c) => setItems(c.items || []))
+  }, [guestToken, setItems])
 
   const totalItems = useMemo(() => items.reduce((sum, i) => sum + i.qty, 0), [items])
 
@@ -231,10 +236,10 @@ function CartPage({ token }: { token: string }) {
   )
 }
 
-function CheckoutPage({ token }: { token: string }) {
+function CheckoutPage() {
   const [shippingAddress, setShippingAddress] = useState('')
   async function pay() {
-    const res = await api.send<{ checkoutUrl: string }>('/api/checkout/sessions', 'POST', { shippingAddress }, token)
+    const res = await api.post<{ checkoutUrl: string }>('/checkout/sessions', { shippingAddress })
     window.location.href = res.checkoutUrl
   }
 
@@ -251,9 +256,9 @@ function OrderSuccess() {
   return <div className="rounded bg-emerald-50 p-6 text-emerald-900">Order payment completed. Thank you for choosing Harvest & Co.</div>
 }
 
-function Orders({ token }: { token: string }) {
+function Orders() {
   const [orders, setOrders] = useState<any[]>([])
-  useEffect(() => { api.get<any[]>('/api/orders', token).then(setOrders).catch(() => setOrders([])) }, [token])
+  useEffect(() => { api.get<any[]>('/orders').then(setOrders).catch(() => setOrders([])) }, [])
   return (
     <div>
       <h2 className="mb-4 text-2xl font-semibold">My Orders</h2>
@@ -262,59 +267,7 @@ function Orders({ token }: { token: string }) {
   )
 }
 
-function Login({ setToken }: { setToken: (t: string) => void }) {
-  const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  async function submit() {
-    const res = await api.send<{ accessToken: string }>('/api/auth/login', 'POST', { email, password })
-    setToken(res.accessToken)
-    navigate('/shop')
-  }
-  async function demoGoogle() {
-    const res = await api.send<{ accessToken: string }>('/api/auth/google', 'POST', {
-      idToken: `demo-${crypto.randomUUID()}`,
-      email: `demo.user.${Date.now()}@harvest.local`,
-      name: 'Demo Google User',
-      sub: crypto.randomUUID()
-    })
-    setToken(res.accessToken)
-    navigate('/shop')
-  }
-  return (
-    <div className="max-w-sm space-y-2">
-      <h2 className="text-2xl font-semibold">Login</h2>
-      <input className="w-full rounded border p-2" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
-      <input className="w-full rounded border p-2" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" />
-      <button className="rounded bg-emerald-700 px-4 py-2 text-white" onClick={submit}>Login</button>
-      <button className="rounded border border-emerald-700 px-4 py-2 text-emerald-800" onClick={demoGoogle}>Continue with Google (demo)</button>
-      <p className="text-sm">New here? <Link to="/register" className="underline">Create account</Link></p>
-    </div>
-  )
-}
-
-function Register({ setToken }: { setToken: (t: string) => void }) {
-  const navigate = useNavigate()
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  async function submit() {
-    const res = await api.send<{ accessToken: string }>('/api/auth/register', 'POST', { name, email, password })
-    setToken(res.accessToken)
-    navigate('/shop')
-  }
-  return (
-    <div className="max-w-sm space-y-2">
-      <h2 className="text-2xl font-semibold">Register</h2>
-      <input className="w-full rounded border p-2" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
-      <input className="w-full rounded border p-2" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
-      <input className="w-full rounded border p-2" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" />
-      <button className="rounded bg-emerald-700 px-4 py-2 text-white" onClick={submit}>Create account</button>
-    </div>
-  )
-}
-
-function Admin({ token }: { token: string }) {
+function Admin() {
   const [lowStock, setLowStock] = useState<any[]>([])
   const [payments, setPayments] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
@@ -323,25 +276,25 @@ function Admin({ token }: { token: string }) {
   const [adjustQty, setAdjustQty] = useState<Record<string, number>>({})
 
   useEffect(() => {
-    api.get<any[]>('/api/admin/inventory/low-stock', token).then(setLowStock).catch(() => setLowStock([]))
-    api.get<any[]>('/api/admin/payments', token).then(setPayments).catch(() => setPayments([]))
-    api.get<any[]>('/api/admin/catalog/products', token).then(setProducts).catch(() => setProducts([]))
-    api.get<any[]>('/api/admin/orders', token).then(setOrders).catch(() => setOrders([]))
-    api.get<any[]>('/api/admin/reviews', token).then(setHiddenReviews).catch(() => setHiddenReviews([]))
-  }, [token])
+    api.get<any[]>('/admin/inventory/low-stock').then(setLowStock).catch(() => setLowStock([]))
+    api.get<any[]>('/admin/payments').then(setPayments).catch(() => setPayments([]))
+    api.get<any[]>('/admin/catalog/products').then(setProducts).catch(() => setProducts([]))
+    api.get<any[]>('/admin/orders').then(setOrders).catch(() => setOrders([]))
+    api.get<any[]>('/admin/reviews').then(setHiddenReviews).catch(() => setHiddenReviews([]))
+  }, [])
 
   async function updateOrderStatus(orderNumber: string, status: string) {
-    await api.send(`/api/admin/orders/${orderNumber}`, 'PATCH', { status }, token)
+    await api.patch(`/admin/orders/${orderNumber}`, { status })
     setOrders((prev) => prev.map((o) => o.orderNumber === orderNumber ? { ...o, orderStatus: status } : o))
   }
 
   async function adjustStock(productId: string) {
     const onHand = adjustQty[productId] ?? 0
-    await api.send(`/api/admin/inventory/${productId}`, 'PATCH', { onHand }, token)
+    await api.patch(`/admin/inventory/${productId}`, { onHand })
   }
 
   async function reviewVisible(reviewId: string) {
-    await api.send(`/api/admin/reviews/${reviewId}`, 'PATCH', { status: 'VISIBLE' }, token)
+    await api.patch(`/admin/reviews/${reviewId}`, { status: 'VISIBLE' })
     setHiddenReviews((prev) => prev.filter((r) => r.id !== reviewId))
   }
 

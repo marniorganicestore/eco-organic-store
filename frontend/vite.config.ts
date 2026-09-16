@@ -21,6 +21,7 @@ const SPA_FALLBACK_PAGES = [
   'checkout/index.html',
   'login/index.html',
   'register/index.html',
+  'forgot-password/index.html',
   'admin/index.html',
   'account/orders/index.html',
   'order/success/index.html'

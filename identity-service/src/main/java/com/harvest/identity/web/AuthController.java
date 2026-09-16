@@ -39,10 +39,7 @@ public class AuthController {
     }
 
     @PostMapping("/api/auth/google")
-    public AuthResponse google(@RequestBody GoogleRequest request, HttpServletResponse response) {
-        if (request.idToken() == null || request.idToken().isBlank()) {
-            throw new IllegalArgumentException("idToken is required");
-        }
+    public AuthResponse google(@Valid @RequestBody GoogleRequest request, HttpServletResponse response) {
         var principal = googleIdTokenVerifierService.verify(request.idToken());
         return authService.googleLogin(principal.email(), principal.name(), principal.subject(), response);
     }
@@ -89,5 +86,15 @@ public class AuthController {
         return authService.allUsers().stream()
                 .map(u -> new UserResponse(u.getId(), u.getEmail(), u.getName(), u.getAvatar(), u.getRoles(), u.getAddresses()))
                 .toList();
+    }
+
+    @PostMapping("/api/auth/request-reset")
+    public MessageResponse requestReset(@Valid @RequestBody RequestResetRequest request) {
+        return authService.requestPasswordReset(request);
+    }
+
+    @PostMapping("/api/auth/confirm-reset")
+    public MessageResponse confirmReset(@Valid @RequestBody ConfirmResetRequest request) {
+        return authService.confirmPasswordReset(request);
     }
 }
