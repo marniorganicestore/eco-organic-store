@@ -4,10 +4,14 @@ import com.harvest.payment.domain.Payment;
 import com.harvest.payment.domain.ProcessedEvent;
 import com.harvest.payment.repo.PaymentRepository;
 import com.harvest.payment.repo.ProcessedEventRepository;
+import com.harvest.common.web.UnauthorizedException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
+import com.stripe.net.Webhook;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,6 +25,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final ProcessedEventRepository processedEventRepository;
     private final RestClient restClient;
+    private final ObjectMapper objectMapper;
     private final String internalKey;
 
     @Value("${app.stripe.secret-key:}")
@@ -29,16 +34,20 @@ public class PaymentService {
     private String successUrl;
     @Value("${app.stripe.cancel-url:http://localhost:5173/cart}")
     private String cancelUrl;
+    @Value("${app.stripe.webhook-secret:}")
+    private String webhookSecret;
     @Value("${services.order:http://localhost:8085}")
     private String orderUrl;
 
     public PaymentService(PaymentRepository paymentRepository,
                           ProcessedEventRepository processedEventRepository,
                           RestClient restClient,
+                          ObjectMapper objectMapper,
                           @Value("${app.internal-key}") String internalKey) {
         this.paymentRepository = paymentRepository;
         this.processedEventRepository = processedEventRepository;
         this.restClient = restClient;
+        this.objectMapper = objectMapper;
         this.internalKey = internalKey;
     }
 
@@ -95,6 +104,39 @@ public class PaymentService {
         if ("PAID".equals(status)) {
             restClient.post().uri(orderUrl + "/internal/orders/" + orderNumber + "/paid")
                     .header("X-Internal-Key", internalKey).contentType(MediaType.APPLICATION_JSON).retrieve().toBodilessEntity();
+        }
+    }
+
+    public void handleWebhookPayload(String payload, String stripeSignature) {
+        if (webhookSecret != null && !webhookSecret.isBlank()) {
+            if (stripeSignature == null || stripeSignature.isBlank()) {
+                throw new UnauthorizedException("Missing Stripe signature");
+            }
+            try {
+                Event event = Webhook.constructEvent(payload, stripeSignature, webhookSecret);
+                if ("checkout.session.completed".equals(event.getType())) {
+                    Session session = (Session) event.getDataObjectDeserializer()
+                            .getObject()
+                            .orElseThrow(() -> new IllegalArgumentException("Unsupported webhook event payload"));
+                    handleWebhook(event.getId(), session.getClientReferenceId(), "PAID");
+                } else if ("checkout.session.expired".equals(event.getType())) {
+                    Session session = (Session) event.getDataObjectDeserializer()
+                            .getObject()
+                            .orElseThrow(() -> new IllegalArgumentException("Unsupported webhook event payload"));
+                    handleWebhook(event.getId(), session.getClientReferenceId(), "FAILED");
+                }
+            } catch (UnauthorizedException ex) {
+                throw ex;
+            } catch (Exception ex) {
+                throw new UnauthorizedException("Invalid Stripe signature");
+            }
+            return;
+        }
+        try {
+            WebhookPayload webhookPayload = objectMapper.readValue(payload, WebhookPayload.class);
+            handleWebhook(webhookPayload.eventId(), webhookPayload.orderNumber(), webhookPayload.status());
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid webhook payload");
         }
     }
 

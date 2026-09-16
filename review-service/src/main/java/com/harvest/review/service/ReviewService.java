@@ -2,6 +2,7 @@ package com.harvest.review.service;
 
 import com.harvest.review.domain.Review;
 import com.harvest.review.repo.ReviewRepository;
+import com.harvest.common.web.UnauthorizedException;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +29,7 @@ public class ReviewService {
     }
 
     public Review create(String userId, String productId, int rating, String body) {
-        if (userId == null || userId.isBlank()) throw new IllegalArgumentException("Unauthorized");
+        if (userId == null || userId.isBlank()) throw new UnauthorizedException("Authentication required");
         Map purchase = restClient.get().uri(orderUrl + "/internal/orders/" + userId + "/purchased/" + productId)
                 .header("X-Internal-Key", internalKey).retrieve().body(Map.class);
         boolean verified = Boolean.TRUE.equals(purchase.get("purchased"));

@@ -3,9 +3,11 @@ server:
 spring:
   application:
     name: review-service
-  data:
-    mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/review}
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/review}
+  threads:
+    virtual:
+      enabled: true
 app:
   internal-key: ${INTERNAL_API_KEY:internal-secret}
 services:

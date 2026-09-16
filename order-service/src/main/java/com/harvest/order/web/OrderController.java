@@ -1,5 +1,6 @@
 package com.harvest.order.web;
 
+import com.harvest.common.security.AuthGuards;
 import com.harvest.common.security.UserContextResolver;
 import com.harvest.order.domain.Order;
 import com.harvest.order.service.OrderService;
@@ -24,15 +25,13 @@ public class OrderController {
 
     @GetMapping("/api/orders")
     public List<Order> orders(HttpServletRequest request) {
-        String userId = UserContextResolver.fromHeaders(request).userId();
-        if (userId == null || userId.isBlank()) throw new IllegalArgumentException("Unauthorized");
+        String userId = AuthGuards.requireUser(request).userId();
         return orderService.ordersByUser(userId);
     }
 
     @GetMapping("/api/orders/{orderNumber}")
     public Order order(HttpServletRequest request, @PathVariable String orderNumber) {
-        String userId = UserContextResolver.fromHeaders(request).userId();
-        if (userId == null || userId.isBlank()) throw new IllegalArgumentException("Unauthorized");
+        String userId = AuthGuards.requireUser(request).userId();
         return orderService.orderByNumber(userId, orderNumber);
     }
 
@@ -48,13 +47,13 @@ public class OrderController {
 
     @GetMapping("/api/admin/orders")
     public List<Order> adminOrders(HttpServletRequest request) {
-        if (!UserContextResolver.fromHeaders(request).isAdmin()) throw new IllegalArgumentException("Admin access required");
+        AuthGuards.requireAdmin(request);
         return orderService.allOrders();
     }
 
     @PatchMapping("/api/admin/orders/{orderNumber}")
     public Order adminUpdate(HttpServletRequest request, @PathVariable String orderNumber, @RequestBody StatusRequest statusRequest) {
-        if (!UserContextResolver.fromHeaders(request).isAdmin()) throw new IllegalArgumentException("Admin access required");
+        AuthGuards.requireAdmin(request);
         return orderService.updateStatus(orderNumber, statusRequest.status());
     }
 

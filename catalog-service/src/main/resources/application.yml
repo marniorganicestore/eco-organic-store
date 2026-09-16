@@ -3,8 +3,10 @@ server:
 spring:
   application:
     name: catalog-service
-  data:
-    mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/catalog}
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/catalog}
+  threads:
+    virtual:
+      enabled: true
 app:
   internal-key: ${INTERNAL_API_KEY:internal-secret}

@@ -2,6 +2,8 @@ package com.harvest.order.service;
 
 import com.harvest.order.domain.Order;
 import com.harvest.order.repo.OrderRepository;
+import com.harvest.common.web.ForbiddenException;
+import com.harvest.common.web.UnauthorizedException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +36,7 @@ public class OrderService {
     }
 
     public CheckoutResponse checkout(String userId, String shippingAddress) {
-        if (userId == null || userId.isBlank()) throw new IllegalArgumentException("Unauthorized");
+        if (userId == null || userId.isBlank()) throw new UnauthorizedException("Authentication required");
         Map cart = restClient.get().uri(cartUrl + "/internal/cart/" + userId).header("X-Internal-Key", internalKey).retrieve().body(Map.class);
         List<Map<String, Object>> items = (List<Map<String, Object>>) cart.get("items");
         if (items == null || items.isEmpty()) throw new IllegalArgumentException("Cart is empty");
@@ -93,7 +95,7 @@ public class OrderService {
 
     public Order orderByNumber(String userId, String orderNumber) {
         Order order = orderRepository.findByOrderNumber(orderNumber).orElseThrow(() -> new IllegalArgumentException("Order not found"));
-        if (!order.getUserId().equals(userId)) throw new IllegalArgumentException("Forbidden");
+        if (!order.getUserId().equals(userId)) throw new ForbiddenException("You cannot access this order");
         return order;
     }
 

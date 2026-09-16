@@ -1,7 +1,9 @@
 package com.harvest.identity.web;
 
-import com.harvest.common.security.UserContextResolver;
+import com.harvest.common.security.AuthGuards;
+import com.harvest.common.web.UnauthorizedException;
 import com.harvest.identity.service.AuthService;
+import com.harvest.identity.service.GoogleIdTokenVerifierService;
 import com.harvest.identity.web.AuthDtos.*;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping
 public class AuthController {
     private final AuthService authService;
+    private final GoogleIdTokenVerifierService googleIdTokenVerifierService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, GoogleIdTokenVerifierService googleIdTokenVerifierService) {
         this.authService = authService;
+        this.googleIdTokenVerifierService = googleIdTokenVerifierService;
     }
 
     @PostMapping("/api/auth/register")
@@ -39,7 +43,8 @@ public class AuthController {
         if (request.idToken() == null || request.idToken().isBlank()) {
             throw new IllegalArgumentException("idToken is required");
         }
-        return authService.googleLogin(request.email(), request.name(), request.sub(), response);
+        var principal = googleIdTokenVerifierService.verify(request.idToken());
+        return authService.googleLogin(principal.email(), principal.name(), principal.subject(), response);
     }
 
     @PostMapping("/api/auth/refresh")
@@ -54,7 +59,7 @@ public class AuthController {
             }
         }
         if (refresh == null) {
-            throw new IllegalArgumentException("Missing refresh token");
+            throw new UnauthorizedException("Missing refresh token");
         }
         return authService.refresh(refresh, response);
     }
@@ -66,29 +71,21 @@ public class AuthController {
 
     @GetMapping("/api/me")
     public UserResponse me(HttpServletRequest request) {
-        String userId = UserContextResolver.fromHeaders(request).userId();
-        if (userId == null || userId.isBlank()) {
-            throw new IllegalArgumentException("Unauthorized");
-        }
+        String userId = AuthGuards.requireUser(request).userId();
         var user = authService.getMe(userId);
         return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getAvatar(), user.getRoles(), user.getAddresses());
     }
 
     @PatchMapping("/api/me")
     public UserResponse updateMe(HttpServletRequest request, @RequestBody ProfileRequest profileRequest) {
-        String userId = UserContextResolver.fromHeaders(request).userId();
-        if (userId == null || userId.isBlank()) {
-            throw new IllegalArgumentException("Unauthorized");
-        }
+        String userId = AuthGuards.requireUser(request).userId();
         var user = authService.updateMe(userId, profileRequest);
         return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getAvatar(), user.getRoles(), user.getAddresses());
     }
 
     @GetMapping("/api/admin/users")
     public List<UserResponse> users(HttpServletRequest request) {
-        if (!UserContextResolver.fromHeaders(request).isAdmin()) {
-            throw new IllegalArgumentException("Admin access required");
-        }
+        AuthGuards.requireAdmin(request);
         return authService.allUsers().stream()
                 .map(u -> new UserResponse(u.getId(), u.getEmail(), u.getName(), u.getAvatar(), u.getRoles(), u.getAddresses()))
                 .toList();

@@ -3,8 +3,10 @@ server:
 spring:
   application:
     name: inventory-service
-  data:
-    mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/inventory}
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/inventory}
+  threads:
+    virtual:
+      enabled: true
 app:
   internal-key: ${INTERNAL_API_KEY:internal-secret}

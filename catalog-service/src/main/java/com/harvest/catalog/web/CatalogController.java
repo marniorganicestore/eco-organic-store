@@ -4,7 +4,7 @@ import com.harvest.catalog.domain.Category;
 import com.harvest.catalog.domain.Product;
 import com.harvest.catalog.repo.CategoryRepository;
 import com.harvest.catalog.repo.ProductRepository;
-import com.harvest.common.security.UserContextResolver;
+import com.harvest.common.security.AuthGuards;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.web.bind.annotation.*;
@@ -114,9 +114,7 @@ public class CatalogController {
     }
 
     private static void ensureAdmin(HttpServletRequest request) {
-        if (!UserContextResolver.fromHeaders(request).isAdmin()) {
-            throw new IllegalArgumentException("Admin access required");
-        }
+        AuthGuards.requireAdmin(request);
     }
 
     public record RatingRequest(double averageRating, long reviewCount) {}

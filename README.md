@@ -147,3 +147,6 @@ Optional second ruleset **Protect version tags**: target tags `v*`, enable Restr
 - Internal APIs are protected with `X-Internal-Key`.
 - Gateway blocks `/internal/**` from public access.
 - In development without Stripe keys, payment service returns a local success URL.
+- Configure `GOOGLE_CLIENT_ID` to enable verified Google sign-in.
+- Configure `ADMIN_PASSWORD` (or `ADMIN_PASSWORD_HASH`) to bootstrap the seeded admin user.
+- Configure `STRIPE_WEBHOOK_SECRET` in non-local environments to enforce webhook signature verification.

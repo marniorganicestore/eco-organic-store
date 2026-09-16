@@ -1,5 +1,6 @@
 package com.harvest.review.web;
 
+import com.harvest.common.security.AuthGuards;
 import com.harvest.common.security.UserContextResolver;
 import com.harvest.review.domain.Review;
 import com.harvest.review.service.ReviewService;
@@ -29,13 +30,13 @@ public class ReviewController {
 
     @GetMapping("/api/admin/reviews")
     public List<Review> queue(HttpServletRequest request) {
-        if (!UserContextResolver.fromHeaders(request).isAdmin()) throw new IllegalArgumentException("Admin access required");
+        AuthGuards.requireAdmin(request);
         return reviewService.hiddenQueue();
     }
 
     @PatchMapping("/api/admin/reviews/{reviewId}")
     public Review update(HttpServletRequest request, @PathVariable String reviewId, @RequestBody StatusRequest statusRequest) {
-        if (!UserContextResolver.fromHeaders(request).isAdmin()) throw new IllegalArgumentException("Admin access required");
+        AuthGuards.requireAdmin(request);
         return reviewService.setStatus(reviewId, statusRequest.status());
     }
 

@@ -1,6 +1,6 @@
 package com.harvest.inventory.web;
 
-import com.harvest.common.security.UserContextResolver;
+import com.harvest.common.security.AuthGuards;
 import com.harvest.inventory.domain.Reservation;
 import com.harvest.inventory.domain.Stock;
 import com.harvest.inventory.service.InventoryService;
@@ -50,9 +50,7 @@ public class InventoryController {
     }
 
     private static void ensureAdmin(HttpServletRequest request) {
-        if (!UserContextResolver.fromHeaders(request).isAdmin()) {
-            throw new IllegalArgumentException("Admin access required");
-        }
+        AuthGuards.requireAdmin(request);
     }
 
     public record ReserveRequest(String orderId, List<Reservation.Line> lines) {}
