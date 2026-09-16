@@ -10,6 +10,8 @@ alwaysApply: false
 
 # Security
 
+Stateless JWT only: `SessionCreationPolicy.STATELESS`, no `HttpSession`. Gateway `JwtRelayFilter` (`OncePerRequestFilter`) parses the Bearer token. Do not add server-side session stores.
+
 ## Trust boundary
 
 - **Gateway** validates Bearer JWT (`JwtRelayFilter`) and **sets** `X-User-Id`, `X-User-Email`, `X-User-Roles`. Downstream services trust those headers on the private network.
@@ -38,7 +40,12 @@ if (!ctx.isAdmin()) {
 
 - Send `Authorization: Bearer` only when an access token exists.
 - Never store refresh tokens in `localStorage`. Guest cart token may live in `localStorage`.
-- Gate `/admin/**` on `ADMIN` in UI **and** on the API. UI hiding is not security.
+- Gate `/admin/**` on `ADMIN` in UI **and** on the API (`UserContextResolver.isAdmin()`). UI hiding is not security.
+- Enforce roles at controller/service boundaries. Do not add `@PreAuthorize` unless `@EnableMethodSecurity` is wired the same way in every service.
+
+## Rate limiting
+
+If brute-force becomes a concern, add it on the **gateway** for `/api/auth/**`. Do not add a new service or Redis for this.
 
 ## Secrets
 

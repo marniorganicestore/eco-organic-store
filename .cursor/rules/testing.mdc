@@ -10,7 +10,7 @@ alwaysApply: false
 
 # Testing
 
-Keep tests lean and behavioral. Prefer one invariant per test. No exhaustive CRUD snapshots.
+Keep tests lean and behavioral. Prefer one invariant per test. No exhaustive CRUD snapshots. Backend tests are JUnit via Maven Surefire (`./mvnw verify` in CI). Do not add Selenium/Playwright unless asked.
 
 ## Must-cover (backend)
 
@@ -30,4 +30,4 @@ assertThat(second.available()).isEqualTo(originalAvailable);
 
 Zustand cart unit tests (add, qty, empty). Query hooks: mock `fetch`, assert cache key + error mapping.
 
-Do not add Selenium/Playwright suites unless asked. Browser-verify UX flows instead (shop, checkout, admin).
+Browser-verify UX flows instead of E2E suites (shop, checkout, admin).

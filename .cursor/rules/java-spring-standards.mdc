@@ -6,7 +6,18 @@ alwaysApply: false
 
 # Java / Spring Boot
 
-Constructor injection only. Java 21. Match the existing package layout; do not introduce Lombok.
+Constructor injection only (never `@Autowired` on fields). Java 21. Match the existing package layout; do not introduce Lombok, MapStruct, or JPA `@Entity`.
+
+## Concurrency
+
+Enable virtual threads for blocking I/O (Mongo, `RestClient`). Do not add WebFlux/Reactor for scale.
+
+```yaml
+spring:
+  threads:
+    virtual:
+      enabled: true
+```
 
 ## Layers
 
@@ -31,10 +42,12 @@ public ProductResponse get(@PathVariable String slug) {
 
 ## Errors and validation
 
-- Throw `IllegalArgumentException` for domain/validation failures (`ApiExceptionHandler` → RFC 7807 `ProblemDetail`).
+Centralize in `common` `@RestControllerAdvice` (`ApiExceptionHandler` → RFC 7807 `ProblemDetail`). Do not add a second handler per service unless a module needs a specific mapping.
+
+- Throw `IllegalArgumentException` for domain/validation failures.
 - Use `@Valid` on mutating request bodies.
 - Prefer dedicated 401/403 exceptions over treating auth failures as 400.
-- Never swallow exceptions or return raw stack traces.
+- Never swallow exceptions, return stack traces, or put `@Document` entities in error payloads.
 
 ## Inter-service HTTP
 

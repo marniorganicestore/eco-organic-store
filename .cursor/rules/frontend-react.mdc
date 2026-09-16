@@ -8,7 +8,7 @@ alwaysApply: false
 
 # Frontend (React 19 + Vite)
 
-TypeScript strict. Functional components. Do not add a heavy UI library (MUI, Ant, Chakra). Grow a small local kit: Button, Input, Card, Badge, Toast.
+TypeScript strict. Functional components. Write compiler-friendly UI (pure props, no mutating props). Do not enable `babel-plugin-react-compiler` unless asked — the Vite template left it off for dev/build cost. Do not add a heavy UI library (MUI, Ant, Chakra). Grow a small local kit: Button, Input, Card, Badge, Toast.
 
 ## Structure (split the App.tsx monolith)
 
@@ -33,9 +33,9 @@ const { data, isPending, isError } = useQuery({
 })
 ```
 
-- **TanStack Query**: catalog, orders, reviews, admin lists.
+- **TanStack Query**: catalog, orders, reviews, admin lists. Owns server-state cache, background refetch, and optimistic updates when the UX needs them.
 - **Zustand**: guestToken, optimistic cart qty, auth token. Persist guestToken to `localStorage`.
-- Vite proxy: call `/api/...` (relative). Never hardcode `localhost:8081` from the SPA.
+- Vite proxy `/api` → `http://localhost:8080` (gateway). Call `/api/...` relative. Never hardcode `localhost:8081` from the SPA. Never talk to services directly (avoids CORS on domain services).
 
 ## Routing
 
@@ -45,4 +45,4 @@ Admin: `/admin/*` role-gated. Use React Router 7. Prefer View Transitions on sho
 
 ## Quality
 
-No `any`. Share types with API records (`pricePaise`, `orderStatus`). Handle 401 by clearing token and sending the user to `/login`. After login, merge guest cart via the cart API.
+No `any`. Keep TypeScript types in lockstep with Java DTO records (`pricePaise`, `orderStatus`). When a backend record changes, update the matching TS type in the same change. Handle 401 by clearing token and sending the user to `/login`. After login, merge guest cart via the cart API.

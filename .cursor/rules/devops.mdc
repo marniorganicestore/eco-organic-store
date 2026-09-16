@@ -1,0 +1,28 @@
+---
+description: Docker Compose, GitHub Actions CI, and container conventions for Harvest
+globs:
+  - "docker-compose.yml"
+  - "Dockerfile"
+  - ".github/workflows/**"
+  - "**/pom.xml"
+alwaysApply: false
+---
+
+# DevOps
+
+Local stack is this repo's `docker-compose.yml`: MongoDB 8, optional Mongo Express (`--profile tools`), and Java services (`--profile app`). Do not add MySQL, Redis, an Nginx SPA container, or Spring Boot docker-compose auto-start — those fight the multi-module layout.
+
+## CI (GitHub Actions)
+
+Keep `.github/workflows/ci.yml` as the required check:
+
+- Backend: Temurin 21, `./mvnw -B verify`
+- Frontend: Node 22, `npm ci`, lint, `npm run build`
+- Compose: `docker compose --profile app --profile tools config`
+- Secrets: gitleaks
+
+Image bake/push is `.github/workflows/docker.yml` (GHCR). Do not add AWS EC2, Kubernetes, or Spring Cloud Config pipelines (v1 out of scope).
+
+## Images
+
+Reuse the root multi-stage `Dockerfile` with `MODULE=`. Secrets stay in `.env` / GitHub secrets — never in Dockerfiles, compose defaults that look production-ready, or workflow logs.
