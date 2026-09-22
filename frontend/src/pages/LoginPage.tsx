@@ -82,7 +82,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell scene title="Welcome back" subtitle="Login to manage orders and checkout faster.">
+    <AuthShell title="Welcome back" subtitle="Login to manage orders and checkout faster.">
       {error ? (
         <p id="login-error" role="alert" className="mb-4 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">
           {error}

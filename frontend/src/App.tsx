@@ -48,7 +48,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
-  const isScenePage = location.pathname === '/login' || location.pathname === '/'
+  const isScenePage = ['/', '/login', '/register', '/forgot-password'].includes(location.pathname)
 
   async function logout() {
     try {
