@@ -73,7 +73,6 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
     capabilities: [
       { name: 'EnableMongo' }
       { name: 'EnableServerless' }
-      { name: 'EnableMongo16mbDocumentSupport' }
     ]
   }
 }
@@ -99,7 +98,7 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
     }
     enableRbacAuthorization: false
     enableSoftDelete: true
-    enablePurgeProtection: false
+    enablePurgeProtection: true
     publicNetworkAccess: 'Enabled'
     accessPolicies: [
       {

@@ -56,21 +56,39 @@ foreach ($role in @('Contributor', 'User Access Administrator')) {
     }
 }
 
-$fedFile = Join-Path ([System.IO.Path]::GetTempPath()) 'harvest-oidc-fed.json'
-@{
-    name        = 'github-environment-azure'
-    issuer      = 'https://token.actions.githubusercontent.com'
-    subject     = "repo:${GitHubRepo}:environment:azure"
-    description = 'GitHub Actions environment azure'
-    audiences   = @('api://AzureADTokenExchange')
-} | ConvertTo-Json | Set-Content -Path $fedFile -Encoding utf8
-
-$hasFed = az ad app federated-credential list --id $appId --query "[?name=='github-environment-azure'].id" --output tsv
-if (-not $hasFed) {
-    Write-Host "Creating federated credential for $GitHubRepo environment:azure"
+function Add-FederatedCredential([string]$Name, [string]$Subject) {
+    $existing = az ad app federated-credential list --id $appId --query "[?name=='$Name' || subject=='$Subject'].id" --output tsv
+    if ($existing) {
+        return
+    }
+    Write-Host "Creating federated credential $Name ($Subject)"
+    $fedFile = Join-Path ([System.IO.Path]::GetTempPath()) "$Name.json"
+    @{
+        name        = $Name
+        issuer      = 'https://token.actions.githubusercontent.com'
+        subject     = $Subject
+        description = 'GitHub Actions environment azure'
+        audiences   = @('api://AzureADTokenExchange')
+    } | ConvertTo-Json | Set-Content -Path $fedFile -Encoding utf8
     az ad app federated-credential create --id $appId --parameters $fedFile --output none
+    Remove-Item $fedFile -ErrorAction SilentlyContinue
 }
-Remove-Item $fedFile -ErrorAction SilentlyContinue
+
+Add-FederatedCredential -Name 'github-environment-azure' -Subject "repo:${GitHubRepo}:environment:azure"
+
+$owner, $repoName = $GitHubRepo.Split('/')
+$ownerId = $null
+$repoId = $null
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+    $repoId = gh api "repos/$GitHubRepo" --jq .id 2>$null
+    $ownerId = gh api "orgs/$owner" --jq .id 2>$null
+    if (-not $ownerId) {
+        $ownerId = gh api "users/$owner" --jq .id 2>$null
+    }
+}
+if ($ownerId -and $repoId) {
+    Add-FederatedCredential -Name 'github-environment-azure-ids' -Subject "repo:${owner}@${ownerId}/${repoName}@${repoId}:environment:azure"
+}
 
 $tenantId = az account show --query tenantId --output tsv
 

@@ -12,6 +12,8 @@ https://api.eco-organic-store.com      Container App `gateway` (external)
 
 Local development is unchanged (`docker-compose.yml` + Mongo 8). This folder is the hosted target only. No AKS, no EC2, no new Java modules. If Cosmos serverless or Container Apps is unavailable in `centralindia`, set repo variable `AZURE_LOCATION` to `eastus` and redeploy.
 
+Orgs that include numeric IDs in the GitHub OIDC `sub` claim need both federated credentials (`owner/repo` and `owner@id/repo@id`). `bootstrap.ps1` creates both when `gh` is available.
+
 ## One-time bootstrap
 
 1. Azure CLI logged in, Owner or User Access Administrator on the subscription.
