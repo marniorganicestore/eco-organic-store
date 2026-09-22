@@ -39,6 +39,7 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(screen.getByRole('alert').textContent).toContain('Enter a valid email address.')
     expect(fetchMock).not.toHaveBeenCalled()
+    expect(document.querySelector('img[src="/images/login-harvest.png"]')).toBeTruthy()
   })
 
   it('signs in and returns to the requested page', async () => {

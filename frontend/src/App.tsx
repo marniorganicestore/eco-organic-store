@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { authApi, api } from './lib/api'
@@ -45,7 +45,9 @@ function Layout({ children }: { children: React.ReactNode }) {
   const qty = items.reduce((sum, i) => sum + i.qty, 0)
   const isAdmin = user?.roles.includes('ADMIN') ?? false
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
+  const isLoginScene = location.pathname === '/login'
 
   async function logout() {
     try {
@@ -57,8 +59,12 @@ function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f6f1] text-slate-800">
-      <header className="sticky top-0 z-20 border-b border-emerald-100 bg-[#f8f6f1]/95 backdrop-blur">
+    <div className={`min-h-screen text-slate-800 ${isLoginScene ? 'bg-emerald-950' : 'bg-[#f8f6f1]'}`}>
+      <header className={`sticky top-0 z-20 border-b backdrop-blur-md ${
+        isLoginScene
+          ? 'border-white/15 bg-[#f8f6f1]/72'
+          : 'border-emerald-100 bg-[#f8f6f1]/95'
+      }`}>
         <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
           <Link to="/" className="text-2xl font-semibold text-emerald-900">Harvest & Co.</Link>
           <nav className="flex gap-4 text-sm">
@@ -92,7 +98,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl p-4">{children}</main>
+      <main className={isLoginScene ? 'relative' : 'mx-auto max-w-6xl p-4'}>{children}</main>
     </div>
   )
 }
