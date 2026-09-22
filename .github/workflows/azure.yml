@@ -25,11 +25,11 @@ jobs:
     timeout-minutes: 50
     environment: azure
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: azure/login@v2
+      - uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -102,13 +102,13 @@ jobs:
           set_secret stripe-webhook-secret "${STRIPE_WEBHOOK_SECRET:- }"
           set_secret google-client-id "${GOOGLE_CLIENT_ID:- }"
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Log in to Azure Container Registry
         run: az acr login --name "${ACR_NAME}"
 
       - name: Bake and push images
-        uses: docker/bake-action@v6
+        uses: docker/bake-action@v7
         env:
           REGISTRY: ${{ env.ACR_LOGIN_SERVER }}
           TAG: ${{ env.TAG }}
@@ -159,7 +159,7 @@ jobs:
             az containerapp hostname bind -n gateway -g "${AZURE_RESOURCE_GROUP}" --hostname "${api_host}" --environment "${ENVIRONMENT_NAME}" --validation-method CNAME --output none
           fi
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
