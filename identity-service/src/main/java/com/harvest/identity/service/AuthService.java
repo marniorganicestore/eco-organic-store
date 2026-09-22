@@ -35,6 +35,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final boolean cookieSecure;
     private final String cookieSameSite;
+    private volatile String cachedDummyPasswordHash;
 
     public AuthService(
             UserRepository userRepository,
@@ -62,19 +63,30 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
-        User user = userRepository.findByEmail(request.email().toLowerCase())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
-        if (user.getPasswordHash() == null || !encoder.matches(request.password(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid credentials");
+        String email = request.email().trim().toLowerCase();
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null || user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            encoder.matches(request.password(), dummyPasswordHash());
+            throw new UnauthorizedException("Invalid email or password");
+        }
+        if (!encoder.matches(request.password(), user.getPasswordHash())) {
+            throw new UnauthorizedException("Invalid email or password");
         }
         return issueTokens(user, response);
     }
 
-    public AuthResponse googleLogin(String email, String name, String sub, HttpServletResponse response) {
+    public AuthResponse googleLogin(String email, String name, String sub, String picture, HttpServletResponse response) {
         User user = userRepository.findByEmail(email.toLowerCase()).orElseGet(User::new);
         user.setEmail(email.toLowerCase());
-        user.setName(name);
+        if (name != null && !name.isBlank()) {
+            user.setName(name);
+        } else if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(email);
+        }
         user.setGoogleSub(sub);
+        if (picture != null && !picture.isBlank()) {
+            user.setAvatar(picture);
+        }
         if (user.getRoles() == null || user.getRoles().isEmpty()) {
             user.setRoles(List.of("CUSTOMER"));
         }
@@ -180,7 +192,16 @@ public class AuthService {
         String refresh = jwtService.createRefreshToken(
                 user.getId(), user.getEmail(), user.getRoles(), (int) REFRESH_TTL.toSeconds(), user.getRefreshTokenVersion());
         response.addHeader("Set-Cookie", refreshCookie(refresh, REFRESH_TTL).toString());
-        return new AuthResponse(access, user.getId(), user.getEmail(), user.getName(), user.getRoles());
+        return new AuthResponse(access, user.getId(), user.getEmail(), user.getName(), user.getRoles(), user.getAvatar());
+    }
+
+    private String dummyPasswordHash() {
+        String hash = cachedDummyPasswordHash;
+        if (hash == null) {
+            hash = encoder.encode("harvest-not-a-user");
+            cachedDummyPasswordHash = hash;
+        }
+        return hash;
     }
 
     private ResponseCookie refreshCookie(String value, Duration maxAge) {

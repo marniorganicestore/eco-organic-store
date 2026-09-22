@@ -1,4 +1,5 @@
 import { useAuthStore, type AuthUser } from '../store/authStore'
+import { useCartStore } from '../store/cartStore'
 
 export function resolveApiBase(raw: string | undefined): string {
   const value = (raw ?? '').trim().replace(/\/+$/, '')
@@ -31,6 +32,7 @@ type AuthResponse = {
   email: string
   name: string
   roles: string[]
+  avatar?: string | null
 }
 
 type MessageResponse = {
@@ -109,7 +111,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     credentials: 'include'
   })
 
-  if (response.status === 401 && options.retryOn401 !== false && !path.startsWith('/auth/refresh')) {
+  if (response.status === 401 && options.retryOn401 !== false && !path.startsWith('/auth/')) {
     const refreshedToken = await refreshAccessToken()
     if (refreshedToken) {
       return apiRequest<T>(path, { ...options, retryOn401: false })
@@ -122,6 +124,27 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return (await response.json()) as T
 }
 
+async function mergeGuestCart(): Promise<void> {
+  const guestToken = useCartStore.getState().guestToken
+  if (!guestToken) return
+  try {
+    const cart = await apiRequest<{ items: { productId: string; qty: number }[] }>(
+      `/cart/merge?guestToken=${encodeURIComponent(guestToken)}`,
+      { method: 'POST' }
+    )
+    useCartStore.getState().setItems(cart.items ?? [])
+  } catch {
+    // Session is already established; cart merge is best-effort.
+  }
+}
+
+async function establishSession(auth: AuthResponse): Promise<AuthUser> {
+  const user = mapAuthUser(auth)
+  useAuthStore.getState().setSession(auth.accessToken, user)
+  await mergeGuestCart()
+  return user
+}
+
 export const api = {
   get: <T>(path: string) => apiRequest<T>(path),
   post: <T>(path: string, body?: unknown, includeAuth = true) =>
@@ -131,22 +154,31 @@ export const api = {
 
 export const authApi = {
   login: async (payload: { email: string; password: string }): Promise<AuthUser> => {
-    const auth = await api.post<AuthResponse>('/auth/login', payload, false)
-    const user = mapAuthUser(auth)
-    useAuthStore.getState().setSession(auth.accessToken, user)
-    return user
+    const auth = await apiRequest<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: payload,
+      includeAuth: false,
+      retryOn401: false
+    })
+    return establishSession(auth)
   },
   register: async (payload: { name: string; email: string; password: string }): Promise<AuthUser> => {
-    const auth = await api.post<AuthResponse>('/auth/register', payload, false)
-    const user = mapAuthUser(auth)
-    useAuthStore.getState().setSession(auth.accessToken, user)
-    return user
+    const auth = await apiRequest<AuthResponse>('/auth/register', {
+      method: 'POST',
+      body: payload,
+      includeAuth: false,
+      retryOn401: false
+    })
+    return establishSession(auth)
   },
   google: async (idToken: string): Promise<AuthUser> => {
-    const auth = await api.post<AuthResponse>('/auth/google', { idToken }, false)
-    const user = mapAuthUser(auth)
-    useAuthStore.getState().setSession(auth.accessToken, user)
-    return user
+    const auth = await apiRequest<AuthResponse>('/auth/google', {
+      method: 'POST',
+      body: { idToken },
+      includeAuth: false,
+      retryOn401: false
+    })
+    return establishSession(auth)
   },
   requestReset: (email: string) => api.post<MessageResponse>('/auth/request-reset', { email }, false),
   confirmReset: (token: string, newPassword: string) =>
@@ -171,6 +203,7 @@ export const authApi = {
       const refreshedToken = await refreshAccessToken()
       if (!refreshedToken) return
       await authApi.me()
+      await mergeGuestCart()
     } catch {
       useAuthStore.getState().clearSession()
     } finally {

@@ -40,7 +40,8 @@ public class AuthController {
     @PostMapping("/api/auth/google")
     public AuthResponse google(@Valid @RequestBody GoogleRequest request, HttpServletResponse response) {
         var principal = googleIdTokenVerifierService.verify(request.idToken());
-        return authService.googleLogin(principal.email(), principal.name(), principal.subject(), response);
+        return authService.googleLogin(
+                principal.email(), principal.name(), principal.subject(), principal.picture(), response);
     }
 
     @PostMapping("/api/auth/refresh")

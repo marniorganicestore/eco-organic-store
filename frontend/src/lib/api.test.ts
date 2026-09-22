@@ -75,3 +75,62 @@ describe('authApi.logout', () => {
     expect(localStorage.getItem('harvest.user')).toBeNull()
   })
 })
+
+describe('authApi.login', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    useAuthStore.getState().clearSession()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('stores the session and merges the guest cart', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes('/auth/login')) {
+        return new Response(JSON.stringify({
+          accessToken: 'jwt',
+          userId: 'u1',
+          email: 'user@harvest.co',
+          name: 'User',
+          roles: ['CUSTOMER'],
+          avatar: null
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      if (String(url).includes('/cart/merge')) {
+        return new Response(JSON.stringify({ items: [{ productId: 'p1', qty: 2 }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      return new Response('missing', { status: 404 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const user = await authApi.login({ email: 'user@harvest.co', password: 'secret123' })
+
+    expect(user.email).toBe('user@harvest.co')
+    expect(useAuthStore.getState().accessToken).toBe('jwt')
+    expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
+      '/api/auth/login',
+      expect.stringMatching(/^\/api\/cart\/merge\?guestToken=/)
+    ])
+  })
+
+  it('does not attempt token refresh when credentials are rejected', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: 'Invalid email or password' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(authApi.login({ email: 'user@harvest.co', password: 'nope' })).rejects.toMatchObject({
+      status: 401,
+      message: 'Invalid email or password'
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/auth/login')
+  })
+})

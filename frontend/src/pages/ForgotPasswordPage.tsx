@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError, authApi } from '../lib/api'
+import { AuthShell } from '../components/auth/AuthShell'
+import { PasswordField } from '../components/auth/PasswordField'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -35,7 +37,7 @@ export default function ForgotPasswordPage() {
     setMessage('')
     setError('')
     if (!token.trim() || newPassword.trim().length < 8) {
-      setError('Reset token and min 8-char password are required.')
+      setError('Reset token and a password of at least 8 characters are required.')
       return
     }
     setPending(true)
@@ -50,30 +52,69 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <section className="mx-auto max-w-xl space-y-4 rounded-xl border border-emerald-100 bg-white p-6 shadow-sm">
-      <h2 className="text-2xl font-semibold text-emerald-900">Reset password</h2>
-      <p className="text-sm text-slate-600">This flow is intentionally generic and does not reveal whether an account exists.</p>
-      {message ? <p className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{message}</p> : null}
-      {error ? <p className="rounded border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">{error}</p> : null}
+    <AuthShell
+      title="Reset your password"
+      subtitle="We never say whether an email is registered. If an account exists, you will get the next step."
+    >
+      {message ? (
+        <p role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          {message}
+        </p>
+      ) : null}
+      {error ? (
+        <p role="alert" className="mb-4 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">
+          {error}
+        </p>
+      ) : null}
 
-      <form className="space-y-3 rounded border border-emerald-100 p-4" onSubmit={requestReset}>
-        <h3 className="font-medium">Request reset</h3>
-        <input className="w-full rounded-lg border border-emerald-100 p-2 outline-none focus:ring-2 focus:ring-emerald-700" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" />
-        <button className="rounded-lg bg-emerald-700 px-4 py-2 text-white disabled:opacity-50" disabled={pending} type="submit">
+      <form className="space-y-3" onSubmit={requestReset}>
+        <label className="block text-sm font-medium text-slate-800" htmlFor="reset-email">
+          Email
+          <input
+            id="reset-email"
+            className="mt-1 w-full rounded-lg border border-emerald-100 p-2.5 outline-none focus:ring-2 focus:ring-emerald-700"
+            type="email"
+            autoComplete="email"
+            value={email}
+            disabled={pending}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </label>
+        <button className="w-full rounded-lg bg-emerald-700 px-4 py-2.5 font-medium text-white hover:bg-emerald-800 disabled:opacity-50" disabled={pending} type="submit">
           {pending ? 'Sending...' : 'Send reset request'}
         </button>
       </form>
 
-      <form className="space-y-3 rounded border border-emerald-100 p-4" onSubmit={confirmReset}>
-        <h3 className="font-medium">Confirm reset (shell)</h3>
-        <input className="w-full rounded-lg border border-emerald-100 p-2 outline-none focus:ring-2 focus:ring-emerald-700" value={token} onChange={(event) => setToken(event.target.value)} placeholder="Reset token" />
-        <input className="w-full rounded-lg border border-emerald-100 p-2 outline-none focus:ring-2 focus:ring-emerald-700" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="New password (min 8 chars)" />
-        <button className="rounded-lg border border-emerald-700 px-4 py-2 text-emerald-800 disabled:opacity-50" disabled={pending} type="submit">
-          {pending ? 'Submitting...' : 'Confirm reset'}
+      <form className="mt-8 space-y-3 border-t border-emerald-100 pt-6" onSubmit={confirmReset}>
+        <h3 className="text-sm font-medium text-emerald-900">Have a reset token?</h3>
+        <label className="block text-sm font-medium text-slate-800" htmlFor="reset-token">
+          Reset token
+          <input
+            id="reset-token"
+            className="mt-1 w-full rounded-lg border border-emerald-100 p-2.5 outline-none focus:ring-2 focus:ring-emerald-700"
+            value={token}
+            disabled={pending}
+            onChange={(event) => setToken(event.target.value)}
+          />
+        </label>
+        <PasswordField
+          id="reset-password"
+          label="New password"
+          value={newPassword}
+          autoComplete="new-password"
+          disabled={pending}
+          onChange={setNewPassword}
+        />
+        <button className="w-full rounded-lg border border-emerald-700 px-4 py-2.5 font-medium text-emerald-800 hover:bg-emerald-50 disabled:opacity-50" disabled={pending} type="submit">
+          {pending ? 'Submitting...' : 'Set new password'}
         </button>
       </form>
 
-      <p className="text-sm"><Link className="underline" to="/login">Back to login</Link></p>
-    </section>
+      <p className="mt-6 text-sm">
+        <Link className="font-medium text-emerald-800 underline decoration-emerald-300 underline-offset-2" to="/login">
+          Back to sign in
+        </Link>
+      </p>
+    </AuthShell>
   )
 }

@@ -14,10 +14,11 @@ public final class AuthDtos {
             @NotBlank @Size(min = 8, max = 72) String password) {}
     public record LoginRequest(
             @NotBlank @Email @Size(max = 160) String email,
-            @NotBlank @Size(min = 8, max = 72) String password) {}
+            @NotBlank @Size(max = 72) String password) {}
     public record GoogleRequest(@NotBlank String idToken) {}
     public record ProfileRequest(String name, String avatar, List<String> addresses) {}
-    public record AuthResponse(String accessToken, String userId, String email, String name, List<String> roles) {}
+    public record AuthResponse(
+            String accessToken, String userId, String email, String name, List<String> roles, String avatar) {}
     public record UserResponse(String userId, String email, String name, String avatar, List<String> roles, List<String> addresses) {}
     public record RequestResetRequest(@NotBlank @Email @Size(max = 160) String email) {}
     public record ConfirmResetRequest(@NotBlank String token, @NotBlank @Size(min = 8, max = 72) String newPassword) {}

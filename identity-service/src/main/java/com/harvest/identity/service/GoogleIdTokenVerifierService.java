@@ -51,12 +51,13 @@ public class GoogleIdTokenVerifierService {
             }
             String email = claims.getStringClaim("email");
             String name = claims.getStringClaim("name");
+            String picture = claims.getStringClaim("picture");
             String sub = claims.getSubject();
             Boolean emailVerified = claims.getBooleanClaim("email_verified");
             if (email == null || sub == null || !Boolean.TRUE.equals(emailVerified)) {
                 throw new UnauthorizedException("Google account is not verified");
             }
-            return new GooglePrincipal(sub, email, name == null ? email : name);
+            return new GooglePrincipal(sub, email, name == null ? email : name, picture);
         } catch (UnauthorizedException ex) {
             throw ex;
         } catch (Exception ex) {
@@ -64,5 +65,5 @@ public class GoogleIdTokenVerifierService {
         }
     }
 
-    public record GooglePrincipal(String subject, String email, String name) {}
+    public record GooglePrincipal(String subject, String email, String name, String picture) {}
 }

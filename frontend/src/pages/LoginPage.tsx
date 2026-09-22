@@ -2,11 +2,21 @@ import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError, authApi } from '../lib/api'
+import { postLoginPath } from '../lib/postLoginPath'
 import { useAuthStore } from '../store/authStore'
+import { AuthShell } from '../components/auth/AuthShell'
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton'
+import { PasswordField } from '../components/auth/PasswordField'
 
-function getRedirectPath(from: unknown, roles: string[]): string {
-  if (typeof from === 'string' && from.startsWith('/')) return from
-  return roles.includes('ADMIN') ? '/admin' : '/shop'
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function loginErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return 'Invalid email or password.'
+    if (error.status === 400) return 'Check your email and password and try again.'
+    return error.message
+  }
+  return 'Unable to sign in right now. Please try again.'
 }
 
 export default function LoginPage() {
@@ -16,98 +26,116 @@ export default function LoginPage() {
   const bootstrapped = useAuthStore((state) => state.bootstrapped)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [idToken, setIdToken] = useState('')
   const [error, setError] = useState('')
+  const [fieldError, setFieldError] = useState<'email' | 'password' | ''>('')
   const [pending, setPending] = useState(false)
   const from = useMemo(() => (location.state as { from?: string } | null)?.from, [location.state])
 
   if (bootstrapped && user) {
-    return <Navigate to={getRedirectPath(from, user.roles)} replace />
+    return <Navigate to={postLoginPath(from, user.roles)} replace />
+  }
+
+  async function finishLogin(profile: { roles: string[] }) {
+    navigate(postLoginPath(from, profile.roles), { replace: true })
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
-    if (!email.trim() || !password.trim()) {
-      setError('Email and password are required.')
+    setFieldError('')
+    const trimmedEmail = email.trim()
+    if (!EMAIL_PATTERN.test(trimmedEmail)) {
+      setFieldError('email')
+      setError('Enter a valid email address.')
+      return
+    }
+    if (!password) {
+      setFieldError('password')
+      setError('Enter your password.')
       return
     }
     setPending(true)
     try {
-      const profile = await authApi.login({ email: email.trim(), password })
-      navigate(getRedirectPath(from, profile.roles), { replace: true })
+      const profile = await authApi.login({ email: trimmedEmail, password })
+      await finishLogin(profile)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Unable to login right now.')
+      setError(loginErrorMessage(err))
     } finally {
       setPending(false)
     }
   }
 
-  async function loginWithGoogleToken() {
+  async function loginWithGoogle(idToken: string) {
     setError('')
-    if (!idToken.trim()) {
-      setError('Google ID token is required.')
-      return
-    }
+    setFieldError('')
     setPending(true)
     try {
-      const profile = await authApi.google(idToken.trim())
-      navigate(getRedirectPath(from, profile.roles), { replace: true })
+      const profile = await authApi.google(idToken)
+      await finishLogin(profile)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Google login failed.')
+      setError(err instanceof ApiError && err.status === 401
+        ? 'Google sign-in failed. Try again or use your email and password.'
+        : loginErrorMessage(err))
     } finally {
       setPending(false)
     }
   }
 
   return (
-    <section className="mx-auto max-w-md space-y-4 rounded-xl border border-emerald-100 bg-white p-6 shadow-sm">
-      <h2 className="text-2xl font-semibold text-emerald-900">Welcome back</h2>
-      <p className="text-sm text-slate-600">Login to manage orders and checkout faster.</p>
-      {error ? <p className="rounded border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">{error}</p> : null}
-      <form className="space-y-3" onSubmit={submit}>
-        <label className="block text-sm font-medium">
+    <AuthShell title="Welcome back" subtitle="Login to manage orders and checkout faster.">
+      {error ? (
+        <p id="login-error" role="alert" className="mb-4 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">
+          {error}
+        </p>
+      ) : null}
+      <form className="space-y-4" onSubmit={submit} noValidate>
+        <label className="block text-sm font-medium text-slate-800" htmlFor="email">
           Email
           <input
-            className="mt-1 w-full rounded-lg border border-emerald-100 p-2 outline-none focus:ring-2 focus:ring-emerald-700"
+            id="email"
+            name="email"
+            className="mt-1 w-full rounded-lg border border-emerald-100 p-2.5 outline-none focus:ring-2 focus:ring-emerald-700"
             type="email"
+            inputMode="email"
+            autoComplete="username"
+            autoFocus
             value={email}
+            aria-invalid={fieldError === 'email' || undefined}
+            aria-describedby={error ? 'login-error' : undefined}
+            disabled={pending}
             onChange={(event) => setEmail(event.target.value)}
           />
         </label>
-        <label className="block text-sm font-medium">
-          Password
-          <input
-            className="mt-1 w-full rounded-lg border border-emerald-100 p-2 outline-none focus:ring-2 focus:ring-emerald-700"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
-        <button
-          className="w-full rounded-lg bg-emerald-700 px-4 py-2 text-white disabled:opacity-50"
+        <PasswordField
+          id="password"
+          label="Password"
+          value={password}
+          invalid={fieldError === 'password'}
+          describedBy={error ? 'login-error' : undefined}
           disabled={pending}
+          onChange={setPassword}
+        />
+        <div className="flex justify-end">
+          <Link className="text-sm text-emerald-800 underline decoration-emerald-300 underline-offset-2" to="/forgot-password">
+            Forgot password?
+          </Link>
+        </div>
+        <button
+          className="w-full rounded-lg bg-emerald-700 px-4 py-2.5 font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+          disabled={pending}
+          aria-busy={pending}
           type="submit"
         >
-          {pending ? 'Signing in...' : 'Login'}
+          {pending ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
-      <div className="space-y-2 rounded border border-emerald-100 bg-emerald-50/40 p-3">
-        <p className="text-xs text-slate-600">Google shell (paste GIS `idToken` from your integration)</p>
-        <input
-          className="w-full rounded-lg border border-emerald-100 p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-700"
-          value={idToken}
-          onChange={(event) => setIdToken(event.target.value)}
-          placeholder="Google idToken"
-        />
-        <button className="w-full rounded-lg border border-emerald-700 px-4 py-2 text-emerald-800" disabled={pending} onClick={loginWithGoogleToken}>
-          Continue with Google token
-        </button>
-      </div>
-      <div className="flex items-center justify-between text-sm">
-        <Link className="underline" to="/forgot-password">Forgot password?</Link>
-        <p>New here? <Link className="underline" to="/register">Create account</Link></p>
-      </div>
-    </section>
+      <GoogleSignInButton disabled={pending} onCredential={loginWithGoogle} />
+      <p className="mt-6 text-sm text-slate-600">
+        New here?{' '}
+        <Link className="font-medium text-emerald-800 underline decoration-emerald-300 underline-offset-2" to="/register">
+          Create an account
+        </Link>
+      </p>
+    </AuthShell>
   )
 }

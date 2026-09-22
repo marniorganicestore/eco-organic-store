@@ -68,10 +68,51 @@ class AuthServiceTest {
         when(userRepository.findByEmail("user@harvest.co")).thenReturn(Optional.of(user));
         when(encoder.matches("wrongpass", "hash")).thenReturn(false);
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
                 () -> authService.login(new LoginRequest("user@harvest.co", "wrongpass"), new MockHttpServletResponse()));
-        assertEquals("Invalid credentials", exception.getMessage());
+        assertEquals("Invalid email or password", exception.getMessage());
+    }
+
+    @Test
+    void loginRejectsUnknownEmailWithSameMessage() {
+        UserRepository userRepository = mock(UserRepository.class);
+        PasswordEncoder encoder = mock(PasswordEncoder.class);
+        JwtService jwtService = mock(JwtService.class);
+        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax");
+
+        when(userRepository.findByEmail("missing@harvest.co")).thenReturn(Optional.empty());
+        when(encoder.encode("harvest-not-a-user")).thenReturn("dummy-hash");
+        when(encoder.matches("secret123", "dummy-hash")).thenReturn(false);
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> authService.login(new LoginRequest("missing@harvest.co", "secret123"), new MockHttpServletResponse()));
+        assertEquals("Invalid email or password", exception.getMessage());
+        verify(encoder).matches("secret123", "dummy-hash");
+    }
+
+    @Test
+    void googleLoginStoresAvatarAndIssuesTokens() {
+        UserRepository userRepository = mock(UserRepository.class);
+        JwtService jwtService = mock(JwtService.class);
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax");
+
+        when(userRepository.findByEmail("user@harvest.co")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            saved.setId("u-1");
+            return saved;
+        });
+        when(jwtService.createAccessToken(eq("u-1"), eq("user@harvest.co"), anyList(), anyLong())).thenReturn("jwt-token");
+        when(jwtService.createRefreshToken(eq("u-1"), eq("user@harvest.co"), anyList(), anyLong(), eq(0)))
+                .thenReturn("refresh-token");
+
+        var result = authService.googleLogin(
+                "user@harvest.co", "User", "sub-1", "https://img.test/a.png", new MockHttpServletResponse());
+
+        assertEquals("jwt-token", result.accessToken());
+        assertEquals("https://img.test/a.png", result.avatar());
     }
 
     @Test

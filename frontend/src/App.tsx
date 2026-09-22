@@ -1,4 +1,3 @@
-import { create } from 'zustand'
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -8,6 +7,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import { useAuthStore } from './store/authStore'
+import { useCartStore } from './store/cartStore'
 
 type Product = {
   id: string
@@ -28,17 +28,16 @@ type Category = { id: string; slug: string; name: string }
 
 type CartItem = { productId: string; qty: number }
 
-type CartState = {
-  guestToken: string
-  items: CartItem[]
-  setItems: (items: CartItem[]) => void
+function firstName(name: string): string {
+  return name.trim().split(/\s+/)[0] || name
 }
 
-const useCartStore = create<CartState>((set) => ({
-  guestToken: localStorage.getItem('guestToken') || crypto.randomUUID(),
-  items: [],
-  setItems: (items) => set({ items })
-}))
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return 'H'
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase()
+  return `${parts[0].slice(0, 1)}${parts[1].slice(0, 1)}`.toUpperCase()
+}
 
 function Layout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((state) => state.user)
@@ -68,9 +67,27 @@ function Layout({ children }: { children: React.ReactNode }) {
             {isAdmin ? <Link to="/admin">Admin</Link> : null}
             <Link to="/cart">Cart ({qty})</Link>
             {user ? (
-              <button className="rounded border border-emerald-700 px-2 py-1 text-emerald-900" onClick={logout}>Logout</button>
+              <div className="flex items-center gap-2">
+                {user.avatar ? (
+                  <img className="h-8 w-8 rounded-full object-cover" src={user.avatar} alt="" />
+                ) : (
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-800 text-xs font-medium text-white">
+                    {initials(user.name || user.email)}
+                  </span>
+                )}
+                <span className="hidden max-w-28 truncate text-emerald-900 sm:inline">{firstName(user.name || user.email)}</span>
+                <button
+                  type="button"
+                  className="rounded-lg border border-emerald-700 px-2 py-1 text-emerald-900 hover:bg-emerald-50"
+                  onClick={logout}
+                >
+                  Logout
+                </button>
+              </div>
             ) : (
-              <Link to="/login">Login</Link>
+              <Link to="/login" className="rounded-lg bg-emerald-700 px-3 py-1.5 text-white hover:bg-emerald-800">
+                Login
+              </Link>
             )}
           </nav>
         </div>

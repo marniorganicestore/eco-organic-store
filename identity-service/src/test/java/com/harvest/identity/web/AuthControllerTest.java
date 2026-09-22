@@ -28,10 +28,15 @@ class AuthControllerTest {
         HttpServletResponse response = mock(HttpServletResponse.class);
         AuthController controller = new AuthController(authService, verifier);
         GoogleIdTokenVerifierService.GooglePrincipal principal =
-                new GoogleIdTokenVerifierService.GooglePrincipal("sub-1", "user@harvest.co", "User");
+                new GoogleIdTokenVerifierService.GooglePrincipal("sub-1", "user@harvest.co", "User", "https://img.test/a.png");
         when(verifier.verify("valid-token")).thenReturn(principal);
-        when(authService.googleLogin(eq("user@harvest.co"), eq("User"), eq("sub-1"), any(HttpServletResponse.class)))
-                .thenReturn(new AuthResponse("jwt", "u1", "user@harvest.co", "User", List.of("CUSTOMER")));
+        when(authService.googleLogin(
+                        eq("user@harvest.co"),
+                        eq("User"),
+                        eq("sub-1"),
+                        eq("https://img.test/a.png"),
+                        any(HttpServletResponse.class)))
+                .thenReturn(new AuthResponse("jwt", "u1", "user@harvest.co", "User", List.of("CUSTOMER"), "https://img.test/a.png"));
 
         AuthResponse result = controller.google(new GoogleRequest("valid-token"), response);
 
