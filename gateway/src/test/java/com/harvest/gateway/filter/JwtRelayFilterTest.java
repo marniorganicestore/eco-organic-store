@@ -48,4 +48,21 @@ class JwtRelayFilterTest {
 
         assertEquals("real-user", captured.get().getHeader("X-User-Id"));
     }
+
+    @Test
+    void ignoresRefreshJwtPresentedAsBearer() throws ServletException, IOException {
+        JwtService jwtService = new JwtService(SECRET);
+        String refresh = jwtService.createRefreshToken("real-user", "real@harvest.co", List.of("CUSTOMER"), 3600, 1);
+        JwtRelayFilter filter = new JwtRelayFilter(jwtService);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + refresh);
+        request.setRequestURI("/api/me");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicReference<HttpServletRequest> captured = new AtomicReference<>();
+
+        filter.doFilter(request, response, (req, res) -> captured.set((HttpServletRequest) req));
+
+        assertNull(captured.get().getHeader("X-User-Id"));
+        assertNull(captured.get().getHeader("X-User-Email"));
+    }
 }

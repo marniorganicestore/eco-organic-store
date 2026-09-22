@@ -158,8 +158,13 @@ export const authApi = {
     return user
   },
   logout: async (): Promise<void> => {
-    await api.post<void>('/auth/logout')
-    useAuthStore.getState().clearSession()
+    try {
+      await apiRequest<void>('/auth/logout', { method: 'POST', retryOn401: false })
+    } catch {
+      // Server revoke is best-effort; the browser session must still end.
+    } finally {
+      useAuthStore.getState().clearSession()
+    }
   },
   bootstrapSession: async (): Promise<void> => {
     try {

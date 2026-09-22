@@ -1,15 +1,14 @@
 package com.harvest.identity.web;
 
 import com.harvest.common.security.AuthGuards;
-import com.harvest.common.web.UnauthorizedException;
 import com.harvest.identity.service.AuthService;
 import com.harvest.identity.service.GoogleIdTokenVerifierService;
 import com.harvest.identity.web.AuthDtos.*;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,24 +45,13 @@ public class AuthController {
 
     @PostMapping("/api/auth/refresh")
     public AuthResponse refresh(HttpServletRequest request, HttpServletResponse response) {
-        String refresh = null;
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if ("refreshToken".equals(cookie.getName())) {
-                    refresh = cookie.getValue();
-                    break;
-                }
-            }
-        }
-        if (refresh == null) {
-            throw new UnauthorizedException("Missing refresh token");
-        }
-        return authService.refresh(refresh, response);
+        return authService.refresh(request, response);
     }
 
     @PostMapping("/api/auth/logout")
-    public void logout(HttpServletResponse response) {
-        authService.logout(response);
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        authService.logout(request, response);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/api/me")

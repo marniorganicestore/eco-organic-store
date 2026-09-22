@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { authApi, api } from './lib/api'
 import { RequireAdmin, RequireAuth } from './components/auth/RequireAuth'
 import LoginPage from './pages/LoginPage'
@@ -44,9 +45,16 @@ function Layout({ children }: { children: React.ReactNode }) {
   const { items } = useCartStore()
   const qty = items.reduce((sum, i) => sum + i.qty, 0)
   const isAdmin = user?.roles.includes('ADMIN') ?? false
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   async function logout() {
-    await authApi.logout()
+    try {
+      await authApi.logout()
+    } finally {
+      queryClient.clear()
+      navigate('/login', { replace: true })
+    }
   }
 
   return (

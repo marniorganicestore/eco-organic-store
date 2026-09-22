@@ -18,6 +18,7 @@ public class User {
     private String googleSub;
     private List<String> roles = new ArrayList<>(List.of("CUSTOMER"));
     private List<String> addresses = new ArrayList<>();
+    private int refreshTokenVersion = 0;
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -35,4 +36,6 @@ public class User {
     public void setRoles(List<String> roles) { this.roles = roles; }
     public List<String> getAddresses() { return addresses; }
     public void setAddresses(List<String> addresses) { this.addresses = addresses; }
+    public int getRefreshTokenVersion() { return refreshTokenVersion; }
+    public void setRefreshTokenVersion(int refreshTokenVersion) { this.refreshTokenVersion = refreshTokenVersion; }
 }

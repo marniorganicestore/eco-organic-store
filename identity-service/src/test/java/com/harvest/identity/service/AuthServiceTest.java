@@ -1,20 +1,24 @@
 package com.harvest.identity.service;
 
 import com.harvest.common.security.JwtService;
+import com.harvest.common.web.UnauthorizedException;
 import com.harvest.identity.domain.User;
 import com.harvest.identity.repo.UserRepository;
 import com.harvest.identity.web.AuthDtos.ConfirmResetRequest;
 import com.harvest.identity.web.AuthDtos.LoginRequest;
 import com.harvest.identity.web.AuthDtos.RequestResetRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,6 +27,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AuthServiceTest {
+    private static final String SECRET = "change-me-please-change-me-please-change-me-please";
 
     @Test
     void loginReturnsAccessTokenAndSetsRefreshCookie() {
@@ -31,23 +36,23 @@ class AuthServiceTest {
         JwtService jwtService = mock(JwtService.class);
         AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax");
 
-        User user = new User();
-        user.setId("u-1");
-        user.setEmail("user@harvest.co");
-        user.setName("User");
+        User user = customer("u-1", 0);
         user.setPasswordHash("hash");
-        user.setRoles(List.of("CUSTOMER"));
 
         when(userRepository.findByEmail("user@harvest.co")).thenReturn(Optional.of(user));
         when(encoder.matches("secret123", "hash")).thenReturn(true);
         when(jwtService.createAccessToken(eq("u-1"), eq("user@harvest.co"), anyList(), anyLong()))
-                .thenReturn("jwt-token", "refresh-token");
+                .thenReturn("jwt-token");
+        when(jwtService.createRefreshToken(eq("u-1"), eq("user@harvest.co"), anyList(), anyLong(), eq(0)))
+                .thenReturn("refresh-token");
 
-        HttpServletResponse response = new MockHttpServletResponse();
+        MockHttpServletResponse response = new MockHttpServletResponse();
         var result = authService.login(new LoginRequest("user@harvest.co", "secret123"), response);
 
         assertEquals("jwt-token", result.accessToken());
         assertEquals("user@harvest.co", result.email());
+        assertTrue(response.getHeader("Set-Cookie").contains("refreshToken=refresh-token"));
+        assertTrue(response.getHeader("Set-Cookie").contains("HttpOnly"));
     }
 
     @Test
@@ -65,8 +70,99 @@ class AuthServiceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> authService.login(new LoginRequest("user@harvest.co", "wrongpass"), mock(HttpServletResponse.class)));
+                () -> authService.login(new LoginRequest("user@harvest.co", "wrongpass"), new MockHttpServletResponse()));
         assertEquals("Invalid credentials", exception.getMessage());
+    }
+
+    @Test
+    void logoutRevokesRefreshFamilyAndClearsCookie() {
+        UserRepository userRepository = mock(UserRepository.class);
+        JwtService jwtService = new JwtService(SECRET);
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax");
+
+        User user = customer("u-1", 3);
+        String refresh = jwtService.createRefreshToken("u-1", "user@harvest.co", List.of("CUSTOMER"), 3600, 3);
+        when(userRepository.findById("u-1")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new Cookie(AuthService.REFRESH_COOKIE, refresh));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        authService.logout(request, response);
+
+        assertEquals(4, user.getRefreshTokenVersion());
+        verify(userRepository).save(user);
+        String setCookie = response.getHeader("Set-Cookie");
+        assertTrue(setCookie.contains("refreshToken="));
+        assertTrue(setCookie.contains("Max-Age=0"));
+        assertTrue(setCookie.contains("HttpOnly"));
+    }
+
+    @Test
+    void logoutRevokesViaGatewayUserWhenCookieIsMissing() {
+        UserRepository userRepository = mock(UserRepository.class);
+        AuthService authService = new AuthService(
+                userRepository, mock(PasswordEncoder.class), new JwtService(SECRET), false, "Lax");
+
+        User user = customer("u-1", 1);
+        when(userRepository.findById("u-1")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-User-Id", "u-1");
+
+        authService.logout(request, new MockHttpServletResponse());
+
+        assertEquals(2, user.getRefreshTokenVersion());
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void refreshRejectsRevokedRefreshToken() {
+        UserRepository userRepository = mock(UserRepository.class);
+        JwtService jwtService = new JwtService(SECRET);
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax");
+
+        User user = customer("u-1", 5);
+        String staleRefresh = jwtService.createRefreshToken("u-1", "user@harvest.co", List.of("CUSTOMER"), 3600, 4);
+        when(userRepository.findById("u-1")).thenReturn(Optional.of(user));
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new Cookie(AuthService.REFRESH_COOKIE, staleRefresh));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> authService.refresh(request, new MockHttpServletResponse()));
+        assertEquals("Session expired", exception.getMessage());
+    }
+
+    @Test
+    void refreshRejectsAccessToken() {
+        UserRepository userRepository = mock(UserRepository.class);
+        JwtService jwtService = new JwtService(SECRET);
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax");
+
+        String access = jwtService.createAccessToken("u-1", "user@harvest.co", List.of("CUSTOMER"), 600);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new Cookie(AuthService.REFRESH_COOKIE, access));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> authService.refresh(request, new MockHttpServletResponse()));
+        assertEquals("Invalid refresh token", exception.getMessage());
+    }
+
+    @Test
+    void refreshRejectsMissingCookie() {
+        AuthService authService = new AuthService(
+                mock(UserRepository.class), mock(PasswordEncoder.class), new JwtService(SECRET), false, "Lax");
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> authService.refresh(new MockHttpServletRequest(), new MockHttpServletResponse()));
+        assertEquals("Missing refresh token", exception.getMessage());
     }
 
     @Test
@@ -86,5 +182,15 @@ class AuthServiceTest {
         assertEquals("If an account exists, password reset instructions will be sent.", requestMessage.message());
         assertEquals("Password reset request accepted.", confirmMessage.message());
         verify(userRepository).findByEmail("existing@harvest.co");
+    }
+
+    private static User customer(String id, int refreshTokenVersion) {
+        User user = new User();
+        user.setId(id);
+        user.setEmail("user@harvest.co");
+        user.setName("User");
+        user.setRoles(List.of("CUSTOMER"));
+        user.setRefreshTokenVersion(refreshTokenVersion);
+        return user;
     }
 }

@@ -5,8 +5,10 @@ import com.harvest.identity.service.AuthService;
 import com.harvest.identity.service.GoogleIdTokenVerifierService;
 import com.harvest.identity.web.AuthDtos.AuthResponse;
 import com.harvest.identity.web.AuthDtos.GoogleRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 
@@ -15,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AuthControllerTest {
@@ -44,5 +47,19 @@ class AuthControllerTest {
         when(verifier.verify("forged")).thenThrow(new UnauthorizedException("Invalid Google ID token"));
 
         assertThrows(UnauthorizedException.class, () -> controller.google(new GoogleRequest("forged"), response));
+    }
+
+    @Test
+    void logoutReturnsNoContentAndDelegatesToService() {
+        AuthService authService = mock(AuthService.class);
+        GoogleIdTokenVerifierService verifier = mock(GoogleIdTokenVerifierService.class);
+        AuthController controller = new AuthController(authService, verifier);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+
+        var result = controller.logout(request, response);
+
+        assertEquals(HttpStatus.NO_CONTENT, result.getStatusCode());
+        verify(authService).logout(request, response);
     }
 }

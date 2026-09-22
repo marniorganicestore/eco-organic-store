@@ -1,6 +1,7 @@
 package com.harvest.identity.service;
 
 import com.harvest.common.security.JwtService;
+import com.harvest.common.web.UnauthorizedException;
 import com.harvest.identity.domain.User;
 import com.harvest.identity.repo.UserRepository;
 import com.harvest.identity.web.AuthDtos.AuthResponse;
@@ -10,6 +11,9 @@ import com.harvest.identity.web.AuthDtos.MessageResponse;
 import com.harvest.identity.web.AuthDtos.ProfileRequest;
 import com.harvest.identity.web.AuthDtos.RequestResetRequest;
 import com.harvest.identity.web.AuthDtos.RegisterRequest;
+import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.util.List;
@@ -22,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
+    static final String REFRESH_COOKIE = "refreshToken";
     private static final Duration REFRESH_TTL = Duration.ofDays(7);
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
@@ -77,13 +82,21 @@ public class AuthService {
         return issueTokens(user, response);
     }
 
-    public AuthResponse refresh(String refreshToken, HttpServletResponse response) {
-        var claims = jwtService.parse(refreshToken);
-        User user = userRepository.findById(claims.getSubject()).orElseThrow(() -> new IllegalArgumentException("User not found"));
+    public AuthResponse refresh(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = readCookie(request, REFRESH_COOKIE);
+        if (refreshToken == null) {
+            throw new UnauthorizedException("Missing refresh token");
+        }
+        User user = requireRefreshSession(refreshToken);
         return issueTokens(user, response);
     }
 
-    public void logout(HttpServletResponse response) {
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        User user = resolveLogoutUser(request);
+        if (user != null) {
+            user.setRefreshTokenVersion(user.getRefreshTokenVersion() + 1);
+            userRepository.save(user);
+        }
         response.addHeader("Set-Cookie", refreshCookie("", Duration.ZERO).toString());
     }
 
@@ -116,15 +129,62 @@ public class AuthService {
         return new MessageResponse("Password reset request accepted.");
     }
 
+    static String readCookie(HttpServletRequest request, String name) {
+        if (request.getCookies() == null) {
+            return null;
+        }
+        for (Cookie cookie : request.getCookies()) {
+            if (name.equals(cookie.getName()) && cookie.getValue() != null && !cookie.getValue().isBlank()) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
+
+    private User requireRefreshSession(String refreshToken) {
+        Claims claims;
+        try {
+            claims = jwtService.parse(refreshToken);
+        } catch (RuntimeException ex) {
+            throw new UnauthorizedException("Invalid refresh token");
+        }
+        if (!jwtService.isUsableAsRefreshToken(claims)) {
+            throw new UnauthorizedException("Invalid refresh token");
+        }
+        User user = userRepository.findById(claims.getSubject())
+                .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
+        if (jwtService.refreshVersion(claims) != user.getRefreshTokenVersion()) {
+            throw new UnauthorizedException("Session expired");
+        }
+        return user;
+    }
+
+    private User resolveLogoutUser(HttpServletRequest request) {
+        String refresh = readCookie(request, REFRESH_COOKIE);
+        if (refresh != null) {
+            try {
+                return requireRefreshSession(refresh);
+            } catch (RuntimeException ignored) {
+                // Fall through to the access-token identity the gateway already verified.
+            }
+        }
+        String userId = request.getHeader("X-User-Id");
+        if (userId == null || userId.isBlank()) {
+            return null;
+        }
+        return userRepository.findById(userId).orElse(null);
+    }
+
     private AuthResponse issueTokens(User user, HttpServletResponse response) {
         String access = jwtService.createAccessToken(user.getId(), user.getEmail(), user.getRoles(), 900);
-        String refresh = jwtService.createAccessToken(user.getId(), user.getEmail(), user.getRoles(), (int) REFRESH_TTL.toSeconds());
+        String refresh = jwtService.createRefreshToken(
+                user.getId(), user.getEmail(), user.getRoles(), (int) REFRESH_TTL.toSeconds(), user.getRefreshTokenVersion());
         response.addHeader("Set-Cookie", refreshCookie(refresh, REFRESH_TTL).toString());
         return new AuthResponse(access, user.getId(), user.getEmail(), user.getName(), user.getRoles());
     }
 
     private ResponseCookie refreshCookie(String value, Duration maxAge) {
-        return ResponseCookie.from("refreshToken", value)
+        return ResponseCookie.from(REFRESH_COOKIE, value)
                 .httpOnly(true)
                 .path("/")
                 .maxAge(maxAge)

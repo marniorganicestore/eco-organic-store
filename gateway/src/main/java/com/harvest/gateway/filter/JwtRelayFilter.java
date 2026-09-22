@@ -32,14 +32,16 @@ public class JwtRelayFilter extends OncePerRequestFilter {
         if (auth != null && auth.startsWith("Bearer ")) {
             try {
                 Claims claims = jwtService.parse(auth.substring(7));
-                extra.put("X-User-Id", claims.getSubject());
-                extra.put("X-User-Email", String.valueOf(claims.get("email")));
-                Object roles = claims.get("roles");
-                if (roles instanceof List<?> roleList) {
-                    extra.put("X-User-Roles", String.join(",", roleList.stream().map(String::valueOf).toList()));
+                if (jwtService.isUsableAsAccessToken(claims)) {
+                    extra.put("X-User-Id", claims.getSubject());
+                    extra.put("X-User-Email", String.valueOf(claims.get("email")));
+                    Object roles = claims.get("roles");
+                    if (roles instanceof List<?> roleList) {
+                        extra.put("X-User-Roles", String.join(",", roleList.stream().map(String::valueOf).toList()));
+                    }
                 }
             } catch (Exception ignored) {
-                // Forward as guest when token is invalid.
+                // Forward as guest when token is invalid or is a refresh JWT.
             }
         }
         HttpServletRequest wrapped = new HeaderMapRequestWrapper(request, extra);
