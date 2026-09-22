@@ -20,6 +20,9 @@ param keyVaultSecretNames array = []
 @description('Environment entries: { name, value } and/or { name, secretRef }.')
 param envVars array = []
 
+@description('Custom hostnames for public ingress (gateway). Empty for internal apps.')
+param customDomains array = []
+
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
   name: appName
   location: location
@@ -33,12 +36,15 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
     managedEnvironmentId: environmentId
     configuration: {
       activeRevisionsMode: 'Single'
-      ingress: {
-        external: externalIngress
-        targetPort: 8080
-        transport: 'http'
-        allowInsecure: false
-      }
+      ingress: union(
+        {
+          external: externalIngress
+          targetPort: 8080
+          transport: 'http'
+          allowInsecure: false
+        },
+        empty(customDomains) ? {} : { customDomains: customDomains }
+      )
       registries: [
         {
           server: acrLoginServer

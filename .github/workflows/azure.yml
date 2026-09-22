@@ -149,6 +149,16 @@ jobs:
           echo "GATEWAY_URL=${gateway_url}" >> "$GITHUB_ENV"
           echo "STOREFRONT_URL=${storefront_url}" >> "$GITHUB_ENV"
 
+          api_host="${{ vars.VITE_API_BASE }}"
+          api_host="${api_host#https://}"
+          api_host="${api_host#http://}"
+          api_host="${api_host%%/*}"
+          if [ -n "${api_host}" ] && [ "${api_host}" != "${gateway_url#https://}" ]; then
+            echo "Rebinding custom API hostname ${api_host}"
+            az containerapp hostname add -n gateway -g "${AZURE_RESOURCE_GROUP}" --hostname "${api_host}" --output none || true
+            az containerapp hostname bind -n gateway -g "${AZURE_RESOURCE_GROUP}" --hostname "${api_host}" --environment "${ENVIRONMENT_NAME}" --validation-method CNAME --output none
+          fi
+
       - uses: actions/setup-node@v5
         with:
           node-version: "22"

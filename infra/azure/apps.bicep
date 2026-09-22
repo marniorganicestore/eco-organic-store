@@ -13,6 +13,12 @@ param webOrigins string
 
 param gatewayMinReplicas int = 0
 
+@description('Public API hostname bound on the gateway.')
+param gatewayHostname string = 'api.eco-organic-store.com'
+
+@description('Managed certificate name on the Container Apps environment. Empty skips the bind.')
+param gatewayCertificateName string = 'mc-cae-harvest-api-eco-organic--5780'
+
 var acrLoginServer = acr.properties.loginServer
 var environmentId = cae.id
 var identityId = identity.id
@@ -42,6 +48,11 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName
 }
 
+resource gatewayCert 'Microsoft.App/managedEnvironments/managedCertificates@2024-03-01' existing = if (!empty(gatewayCertificateName)) {
+  parent: cae
+  name: gatewayCertificateName
+}
+
 module gateway 'modules/container-app.bicep' = {
   name: 'app-gateway'
   params: {
@@ -54,6 +65,13 @@ module gateway 'modules/container-app.bicep' = {
     keyVaultUri: keyVaultUri
     externalIngress: true
     minReplicas: gatewayMinReplicas
+    customDomains: empty(gatewayCertificateName) ? [] : [
+      {
+        name: gatewayHostname
+        bindingType: 'SniEnabled'
+        certificateId: gatewayCert.id
+      }
+    ]
     keyVaultSecretNames: [
       'jwt-secret'
     ]
