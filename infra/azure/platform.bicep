@@ -74,6 +74,9 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
       { name: 'EnableMongo' }
       { name: 'EnableServerless' }
     ]
+    apiProperties: {
+      serverVersion: '7.0'
+    }
   }
 }
 

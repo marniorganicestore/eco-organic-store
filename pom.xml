@@ -56,6 +56,7 @@
           <version>3.14.0</version>
           <configuration>
             <release>${java.version}</release>
+            <parameters>true</parameters>
           </configuration>
         </plugin>
         <plugin>
@@ -77,5 +78,11 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+      </plugin>
+    </plugins>
   </build>
 </project>
