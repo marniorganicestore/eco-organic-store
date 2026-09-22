@@ -18,6 +18,8 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
+      # Docker Desktop WSL2 is Linux 6.19+; Mongo 8 tcmalloc crashes without this (SERVER-121912).
+      GLIBC_TUNABLES: glibc.pthread.rseq=1
     volumes:
       - mongo_data:/data/db
     healthcheck:
