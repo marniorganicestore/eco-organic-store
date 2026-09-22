@@ -8,6 +8,7 @@ import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import { useAuthStore } from './store/authStore'
 import { useCartStore } from './store/cartStore'
+import { HomeHero } from './components/home/HomeHero'
 
 type Product = {
   id: string
@@ -47,7 +48,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
-  const isLoginScene = location.pathname === '/login'
+  const isScenePage = location.pathname === '/login' || location.pathname === '/'
 
   async function logout() {
     try {
@@ -59,9 +60,9 @@ function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={`min-h-screen text-slate-800 ${isLoginScene ? 'bg-emerald-950' : 'bg-[#f8f6f1]'}`}>
+    <div className={`min-h-screen text-slate-800 ${isScenePage ? 'bg-emerald-950' : 'bg-[#f8f6f1]'}`}>
       <header className={`sticky top-0 z-20 border-b backdrop-blur-md ${
-        isLoginScene
+        isScenePage
           ? 'border-white/15 bg-[#f8f6f1]/72'
           : 'border-emerald-100 bg-[#f8f6f1]/95'
       }`}>
@@ -98,7 +99,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </header>
-      <main className={isLoginScene ? 'relative' : 'mx-auto max-w-6xl p-4'}>{children}</main>
+      <main className={isScenePage ? 'relative' : 'mx-auto max-w-6xl p-4'}>{children}</main>
     </div>
   )
 }
@@ -134,16 +135,7 @@ export default function App() {
 }
 
 function Home() {
-  return (
-    <section className="grid gap-6 py-12 md:grid-cols-2">
-      <div>
-        <h1 className="mb-4 text-4xl font-semibold text-emerald-900">Organic food, directly from trusted farms.</h1>
-        <p className="mb-6 text-slate-600">Fresh produce, pantry staples, and dairy curated for clean living.</p>
-        <Link to="/shop" className="rounded bg-emerald-700 px-4 py-2 text-white">Shop now</Link>
-      </div>
-      <img className="h-64 w-full rounded-xl object-cover" src="https://images.unsplash.com/photo-1542838132-92c53300491e" alt="Organic vegetables" />
-    </section>
-  )
+  return <HomeHero />
 }
 
 function Shop() {
