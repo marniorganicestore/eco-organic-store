@@ -9,6 +9,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import { useAuthStore } from './store/authStore'
 import { useCartStore } from './store/cartStore'
 import { HomeHero } from './components/home/HomeHero'
+import { harvestBtn, harvestBtnGhost, harvestCard, harvestInput, PageShell } from './components/layout/PageShell'
 
 type Product = {
   id: string
@@ -59,20 +60,36 @@ function Layout({ children }: { children: React.ReactNode }) {
     }
   }
 
+  function navClass(path: string) {
+    const active = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
+    return active
+      ? 'font-medium text-emerald-950'
+      : 'text-emerald-900/70 hover:text-emerald-950'
+  }
+
   return (
-    <div className={`min-h-screen text-slate-800 ${isScenePage ? 'bg-emerald-950' : 'bg-[#f8f6f1]'}`}>
-      <header className={`sticky top-0 z-20 border-b backdrop-blur-md ${
-        isScenePage
-          ? 'border-white/15 bg-[#f8f6f1]/72'
-          : 'border-emerald-100 bg-[#f8f6f1]/95'
-      }`}>
+    <div className="relative min-h-screen text-slate-800">
+      {isScenePage ? (
+        <div className="absolute inset-0 -z-10 bg-emerald-950" />
+      ) : (
+        <>
+          <img
+            src="/images/home-harvest.png"
+            alt=""
+            aria-hidden="true"
+            className="fixed inset-0 -z-20 h-full w-full object-cover"
+          />
+          <div className="fixed inset-0 -z-10 bg-[#f8f6f1]/86" />
+        </>
+      )}
+      <header className="sticky top-0 z-20 border-b border-white/25 bg-[#f8f6f1]/78 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
           <Link to="/" className="text-2xl font-semibold text-emerald-900">Harvest & Co.</Link>
-          <nav className="flex gap-4 text-sm">
-            <Link to="/shop">Shop</Link>
-            <Link to="/account/orders">Orders</Link>
-            {isAdmin ? <Link to="/admin">Admin</Link> : null}
-            <Link to="/cart">Cart ({qty})</Link>
+          <nav className="flex items-center gap-4 text-sm">
+            <Link className={navClass('/shop')} to="/shop">Shop</Link>
+            <Link className={navClass('/account/orders')} to="/account/orders">Orders</Link>
+            {isAdmin ? <Link className={navClass('/admin')} to="/admin">Admin</Link> : null}
+            <Link className={navClass('/cart')} to="/cart">Cart ({qty})</Link>
             {user ? (
               <div className="flex items-center gap-2">
                 {user.avatar ? (
@@ -85,21 +102,21 @@ function Layout({ children }: { children: React.ReactNode }) {
                 <span className="hidden max-w-28 truncate text-emerald-900 sm:inline">{firstName(user.name || user.email)}</span>
                 <button
                   type="button"
-                  className="rounded-lg border border-emerald-700 px-2 py-1 text-emerald-900 hover:bg-emerald-50"
+                  className={harvestBtnGhost}
                   onClick={logout}
                 >
                   Logout
                 </button>
               </div>
             ) : (
-              <Link to="/login" className="rounded-lg bg-emerald-700 px-3 py-1.5 text-white hover:bg-emerald-800">
+              <Link to="/login" className={`${harvestBtn} px-3 py-1.5`}>
                 Login
               </Link>
             )}
           </nav>
         </div>
       </header>
-      <main className={isScenePage ? 'relative' : 'mx-auto max-w-6xl p-4'}>{children}</main>
+      <main className={isScenePage ? 'relative' : 'relative mx-auto max-w-6xl px-4 py-8'}>{children}</main>
     </div>
   )
 }
@@ -112,7 +129,7 @@ export default function App() {
     authApi.bootstrapSession()
   }, [])
 
-  if (!bootstrapped) return <Layout><div className="p-6 text-sm text-slate-600">Restoring session...</div></Layout>
+  if (!bootstrapped) return <Layout><p className="p-6 text-sm text-emerald-900/80">Restoring session...</p></Layout>
 
   return (
     <Layout>
@@ -169,23 +186,34 @@ function Shop() {
   }, [category])
 
   return (
-    <div>
-      {loadError ? (
-        <div className="mb-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {loadError}
-        </div>
-      ) : null}
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Shop</h2>
-        <select className="rounded border p-2" value={category} onChange={(e) => setCategory(e.target.value)}>
+    <PageShell
+      title="Shop"
+      subtitle="Seasonal organic produce and pantry staples from trusted farms."
+      actions={(
+        <select
+          className={`${harvestInput} w-56`}
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          aria-label="Filter by category"
+        >
           <option value="">All categories</option>
           {categories.map((c) => <option key={c.id} value={c.slug}>{c.name}</option>)}
         </select>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((p) => <ProductCard key={p.id} p={p} />)}
-      </div>
-    </div>
+      )}
+    >
+      {loadError ? (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-sm text-amber-900">
+          {loadError}
+        </div>
+      ) : null}
+      {products.length === 0 && !loadError ? (
+        <p className={`${harvestCard} p-8 text-sm text-slate-600`}>No products in this category yet.</p>
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {products.map((p) => <ProductCard key={p.id} p={p} />)}
+        </div>
+      )}
+    </PageShell>
   )
 }
 
@@ -196,20 +224,21 @@ function ProductCard({ p }: { p: Product }) {
     setItems(cart.items)
   }
   return (
-    <article className="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm">
+    <article className={`${harvestCard} overflow-hidden p-4`}>
       <Link to={`/product/${p.slug}`}>
-        <img className="mb-3 h-40 w-full rounded object-cover" src={p.images?.[0]} alt={p.name} />
-        <h3 className="font-medium">{p.name}</h3>
+        <img className="mb-3 h-44 w-full rounded-xl object-cover" src={p.images?.[0]} alt={p.name} />
+        <h3 className="font-medium text-emerald-950">{p.name}</h3>
       </Link>
       <p className="text-sm text-slate-500">{p.unit} • {p.origin}</p>
-      <p className="mt-1 font-semibold">₹{(p.pricePaise / 100).toFixed(2)}</p>
-      <button onClick={add} className="mt-3 rounded bg-emerald-700 px-3 py-1.5 text-white">Add to cart</button>
+      <p className="mt-1 font-semibold text-emerald-900">₹{(p.pricePaise / 100).toFixed(2)}</p>
+      <button type="button" onClick={add} className={`${harvestBtn} mt-3 w-full`}>Add to cart</button>
     </article>
   )
 }
 
 function ProductPage() {
   const { slug } = useParams()
+  const { guestToken, setItems } = useCartStore()
   const [product, setProduct] = useState<Product | null>(null)
   const [reviews, setReviews] = useState<any[]>([])
   useEffect(() => {
@@ -218,21 +247,31 @@ function ProductPage() {
   useEffect(() => {
     if (product) api.get<any[]>(`/products/${product.id}/reviews`).then(setReviews)
   }, [product])
-  if (!product) return <p>Loading...</p>
+  if (!product) return <p className="text-sm text-emerald-900/80">Loading...</p>
+  const current = product
+
+  async function add() {
+    const cart = await api.post<{ items: CartItem[] }>(`/cart?guestToken=${guestToken}`, { productId: current.id, qty: 1 })
+    setItems(cart.items)
+  }
+
   return (
-    <section className="grid gap-8 md:grid-cols-2">
-      <img src={product.images?.[0]} alt={product.name} className="h-96 w-full rounded object-cover" />
-      <div>
-        <h2 className="text-3xl font-semibold">{product.name}</h2>
-        <p className="text-slate-600">{product.description}</p>
-        <p className="my-3 text-xl font-semibold">₹{(product.pricePaise / 100).toFixed(2)}</p>
-        <ProductCard p={product} />
-      </div>
-      <div className="md:col-span-2">
-        <h3 className="mb-2 text-xl font-semibold">Reviews</h3>
-        {reviews.length === 0 ? <p className="text-sm text-slate-500">No reviews yet.</p> : reviews.map((r) => <p key={r.id}>{r.rating}★ {r.body}</p>)}
-      </div>
-    </section>
+    <PageShell title={product.name} subtitle={`${product.unit} • ${product.origin}`}>
+      <section className="grid gap-8 md:grid-cols-2">
+        <img src={product.images?.[0]} alt={product.name} className="h-96 w-full rounded-2xl object-cover shadow-lg" />
+        <div className={`${harvestCard} p-6`}>
+          <p className="text-slate-600">{product.description}</p>
+          <p className="my-4 text-2xl font-semibold text-emerald-950">₹{(product.pricePaise / 100).toFixed(2)}</p>
+          <button type="button" onClick={add} className={`${harvestBtn} w-full`}>Add to cart</button>
+        </div>
+        <div className={`${harvestCard} p-6 md:col-span-2`}>
+          <h3 className="mb-3 text-lg font-semibold text-emerald-950">Reviews</h3>
+          {reviews.length === 0
+            ? <p className="text-sm text-slate-500">No reviews yet.</p>
+            : reviews.map((r) => <p key={r.id} className="mb-2 text-sm">{r.rating}★ {r.body}</p>)}
+        </div>
+      </section>
+    </PageShell>
   )
 }
 
@@ -246,16 +285,25 @@ function CartPage() {
   const totalItems = useMemo(() => items.reduce((sum, i) => sum + i.qty, 0), [items])
 
   return (
-    <div>
-      <h2 className="mb-4 text-2xl font-semibold">Cart</h2>
-      {items.length === 0 ? <p className="text-slate-500">Your cart is empty.</p> : null}
-      <ul className="space-y-3">
-        {items.map((i) => <li key={i.productId} className="rounded border bg-white p-3">{i.productId} x {i.qty}</li>)}
-      </ul>
-      <button disabled={!totalItems} className="mt-4 rounded bg-emerald-700 px-4 py-2 text-white disabled:opacity-40" onClick={() => navigate('/checkout')}>
-        Proceed to checkout
-      </button>
-    </div>
+    <PageShell title="Cart" subtitle="Review your harvest before checkout.">
+      <div className={`${harvestCard} p-6`}>
+        {items.length === 0 ? <p className="text-slate-500">Your cart is empty.</p> : null}
+        <ul className="space-y-3">
+          {items.map((i) => (
+            <li key={i.productId} className="rounded-xl border border-emerald-100 bg-white/70 p-3 text-sm text-emerald-950">
+              {i.productId} × {i.qty}
+            </li>
+          ))}
+        </ul>
+        <button
+          disabled={!totalItems}
+          className={`${harvestBtn} mt-5`}
+          onClick={() => navigate('/checkout')}
+        >
+          Proceed to checkout
+        </button>
+      </div>
+    </PageShell>
   )
 }
 
@@ -267,26 +315,50 @@ function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-xl">
-      <h2 className="mb-4 text-2xl font-semibold">Checkout</h2>
-      <textarea className="w-full rounded border p-2" rows={4} value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="Shipping address" />
-      <button className="mt-3 rounded bg-emerald-700 px-4 py-2 text-white" onClick={pay}>Continue to payment</button>
-    </div>
+    <PageShell title="Checkout" subtitle="Where should we send this harvest?">
+      <div className={`${harvestCard} max-w-xl p-6`}>
+        <label className="block text-sm font-medium text-slate-800" htmlFor="shipping">
+          Shipping address
+          <textarea
+            id="shipping"
+            className={`${harvestInput} mt-1`}
+            rows={4}
+            value={shippingAddress}
+            onChange={(e) => setShippingAddress(e.target.value)}
+            placeholder="Shipping address"
+          />
+        </label>
+        <button className={`${harvestBtn} mt-4 w-full`} onClick={pay}>Continue to payment</button>
+      </div>
+    </PageShell>
   )
 }
 
 function OrderSuccess() {
-  return <div className="rounded bg-emerald-50 p-6 text-emerald-900">Order payment completed. Thank you for choosing Harvest & Co.</div>
+  return (
+    <PageShell title="Thank you">
+      <div className={`${harvestCard} p-8 text-emerald-950`}>
+        Order payment completed. Thank you for choosing Harvest &amp; Co.
+      </div>
+    </PageShell>
+  )
 }
 
 function Orders() {
   const [orders, setOrders] = useState<any[]>([])
   useEffect(() => { api.get<any[]>('/orders').then(setOrders).catch(() => setOrders([])) }, [])
   return (
-    <div>
-      <h2 className="mb-4 text-2xl font-semibold">My Orders</h2>
-      {orders.length === 0 ? <p className="text-slate-500">No orders yet.</p> : orders.map((o) => <div key={o.id} className="mb-2 rounded border p-3">{o.orderNumber} • {o.orderStatus}</div>)}
-    </div>
+    <PageShell title="My orders" subtitle="Track packed, shipped, and delivered harvests.">
+      <div className={`${harvestCard} p-6`}>
+        {orders.length === 0
+          ? <p className="text-slate-500">No orders yet.</p>
+          : orders.map((o) => (
+            <div key={o.id} className="mb-2 rounded-xl border border-emerald-100 bg-white/70 p-3 text-sm">
+              {o.orderNumber} • {o.orderStatus}
+            </div>
+          ))}
+      </div>
+    </PageShell>
   )
 }
 
@@ -322,46 +394,48 @@ function Admin() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <section className="rounded border bg-white p-4">
-        <h3 className="mb-2 font-semibold">Low Stock</h3>
-        {lowStock.map((s) => <p key={s.productId}>{s.productId}: {s.available}</p>)}
-      </section>
-      <section className="rounded border bg-white p-4">
-        <h3 className="mb-2 font-semibold">Payments</h3>
-        {payments.map((p) => <p key={p.id}>{p.orderNumber}: {p.status}</p>)}
-      </section>
-      <section className="rounded border bg-white p-4 md:col-span-2">
-        <h3 className="mb-2 font-semibold">Products and Inventory</h3>
-        {products.map((p) => (
-          <div key={p.id} className="mb-2 flex items-center gap-2 rounded border p-2">
-            <span className="min-w-60 text-sm">{p.name}</span>
-            <input type="number" className="w-24 rounded border p-1" placeholder="on hand" onChange={(e) => setAdjustQty((prev) => ({ ...prev, [p.id]: Number(e.target.value) }))} />
-            <button className="rounded bg-emerald-700 px-3 py-1 text-white" onClick={() => adjustStock(p.id)}>Update stock</button>
-          </div>
-        ))}
-      </section>
-      <section className="rounded border bg-white p-4 md:col-span-2">
-        <h3 className="mb-2 font-semibold">Orders</h3>
-        {orders.map((o) => (
-          <div key={o.id} className="mb-2 flex items-center gap-2 rounded border p-2">
-            <span className="min-w-56 text-sm">{o.orderNumber}</span>
-            <span className="min-w-32 text-sm">{o.orderStatus}</span>
-            <button className="rounded border px-2 py-1" onClick={() => updateOrderStatus(o.orderNumber, 'PACKED')}>Pack</button>
-            <button className="rounded border px-2 py-1" onClick={() => updateOrderStatus(o.orderNumber, 'SHIPPED')}>Ship</button>
-            <button className="rounded border px-2 py-1" onClick={() => updateOrderStatus(o.orderNumber, 'DELIVERED')}>Deliver</button>
-          </div>
-        ))}
-      </section>
-      <section className="rounded border bg-white p-4 md:col-span-2">
-        <h3 className="mb-2 font-semibold">Hidden Reviews</h3>
-        {hiddenReviews.length === 0 ? <p className="text-sm text-slate-500">No hidden reviews.</p> : hiddenReviews.map((r) => (
-          <div key={r.id} className="mb-2 flex items-center justify-between rounded border p-2">
-            <p>{r.productId}: {r.body}</p>
-            <button className="rounded bg-emerald-700 px-3 py-1 text-white" onClick={() => reviewVisible(r.id)}>Make visible</button>
-          </div>
-        ))}
-      </section>
-    </div>
+    <PageShell title="Admin" subtitle="Inventory, payments, orders, and reviews.">
+      <div className="grid gap-4 md:grid-cols-2">
+        <section className={`${harvestCard} p-4`}>
+          <h3 className="mb-2 font-semibold text-emerald-950">Low stock</h3>
+          {lowStock.map((s) => <p key={s.productId}>{s.productId}: {s.available}</p>)}
+        </section>
+        <section className={`${harvestCard} p-4`}>
+          <h3 className="mb-2 font-semibold text-emerald-950">Payments</h3>
+          {payments.map((p) => <p key={p.id}>{p.orderNumber}: {p.status}</p>)}
+        </section>
+        <section className={`${harvestCard} p-4 md:col-span-2`}>
+          <h3 className="mb-2 font-semibold text-emerald-950">Products and inventory</h3>
+          {products.map((p) => (
+            <div key={p.id} className="mb-2 flex items-center gap-2 rounded-xl border border-emerald-100 bg-white/70 p-2">
+              <span className="min-w-60 text-sm">{p.name}</span>
+              <input type="number" className={`${harvestInput} w-24`} placeholder="on hand" onChange={(e) => setAdjustQty((prev) => ({ ...prev, [p.id]: Number(e.target.value) }))} />
+              <button className={harvestBtn} onClick={() => adjustStock(p.id)}>Update stock</button>
+            </div>
+          ))}
+        </section>
+        <section className={`${harvestCard} p-4 md:col-span-2`}>
+          <h3 className="mb-2 font-semibold text-emerald-950">Orders</h3>
+          {orders.map((o) => (
+            <div key={o.id} className="mb-2 flex items-center gap-2 rounded-xl border border-emerald-100 bg-white/70 p-2">
+              <span className="min-w-56 text-sm">{o.orderNumber}</span>
+              <span className="min-w-32 text-sm">{o.orderStatus}</span>
+              <button className={harvestBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'PACKED')}>Pack</button>
+              <button className={harvestBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'SHIPPED')}>Ship</button>
+              <button className={harvestBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'DELIVERED')}>Deliver</button>
+            </div>
+          ))}
+        </section>
+        <section className={`${harvestCard} p-4 md:col-span-2`}>
+          <h3 className="mb-2 font-semibold text-emerald-950">Hidden reviews</h3>
+          {hiddenReviews.length === 0 ? <p className="text-sm text-slate-500">No hidden reviews.</p> : hiddenReviews.map((r) => (
+            <div key={r.id} className="mb-2 flex items-center justify-between rounded-xl border border-emerald-100 bg-white/70 p-2">
+              <p>{r.productId}: {r.body}</p>
+              <button className={harvestBtn} onClick={() => reviewVisible(r.id)}>Make visible</button>
+            </div>
+          ))}
+        </section>
+      </div>
+    </PageShell>
   )
 }

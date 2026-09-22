@@ -14,7 +14,9 @@ export function RequireAuth({ children }: Props) {
   const location = useLocation()
   const { user, bootstrapped } = useAuthStore()
 
-  if (!bootstrapped) return <div className="p-6">Restoring session...</div>
+  if (!bootstrapped) {
+    return <p className="p-6 text-sm text-emerald-900/80">Restoring session...</p>
+  }
   if (!user) {
     const from = `${location.pathname}${location.search}`
     return <Navigate to="/login" replace state={{ from }} />
@@ -27,7 +29,9 @@ export function RequireAdmin({ children }: Props) {
   const location = useLocation()
   const { user, bootstrapped } = useAuthStore()
 
-  if (!bootstrapped) return <div className="p-6">Restoring session...</div>
+  if (!bootstrapped) {
+    return <p className="p-6 text-sm text-emerald-900/80">Restoring session...</p>
+  }
   if (!user) {
     const from = `${location.pathname}${location.search}`
     return <Navigate to="/login" replace state={{ from }} />

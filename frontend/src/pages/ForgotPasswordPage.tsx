@@ -53,6 +53,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
+      wide
       title="Reset your password"
       subtitle="We never say whether an email is registered. If an account exists, you will get the next step."
     >
