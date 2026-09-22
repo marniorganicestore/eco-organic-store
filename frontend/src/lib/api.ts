@@ -52,7 +52,7 @@ function mapAuthUser(payload: { userId: string; email: string; name: string; rol
 async function parseError(response: Response): Promise<ApiError> {
   if (response.status === 405) {
     return new ApiError(
-      'This static host does not accept API writes. Use the local Vite app (proxy /api → gateway) or set VITE_API_BASE to a public gateway.',
+      'This static host does not accept API writes. Use the local Vite app (proxy /api → gateway) or deploy the Azure gateway and set VITE_API_BASE.',
       405
     )
   }

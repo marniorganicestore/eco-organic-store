@@ -175,7 +175,7 @@ services:
       - "8080:8080"
     environment:
       <<: *java-env
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,https://eco-organic-store.com,https://www.eco-organic-store.com,https://marniorganicestore.github.io}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,https://eco-organic-store.com,https://www.eco-organic-store.com}
       IDENTITY_SERVICE_URL: http://identity-service:8081
       CATALOG_SERVICE_URL: http://catalog-service:8082
       CART_SERVICE_URL: http://cart-service:8083

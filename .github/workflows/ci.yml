@@ -86,6 +86,22 @@ jobs:
       - name: Validate compose file
         run: docker compose -f docker-compose.yml --profile app --profile tools config --quiet
 
+  bicep:
+    name: Bicep
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Compile Azure templates
+        run: |
+          set -euo pipefail
+          az bicep install
+          az bicep build --file infra/azure/platform.bicep
+          az bicep build --file infra/azure/apps.bicep
+
   secrets:
     name: Secrets
     runs-on: ubuntu-24.04
@@ -114,7 +130,7 @@ jobs:
   # Single required check for the ruleset — keep this job name exactly "CI"
   ci:
     name: CI
-    needs: [backend, frontend, compose, secrets]
+    needs: [backend, frontend, compose, bicep, secrets]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2
@@ -124,4 +140,5 @@ jobs:
           test "${{ needs.backend.result }}" = "success"
           test "${{ needs.frontend.result }}" = "success"
           test "${{ needs.compose.result }}" = "success"
+          test "${{ needs.bicep.result }}" = "success"
           test "${{ needs.secrets.result }}" = "success"

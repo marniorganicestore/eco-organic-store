@@ -1,0 +1,194 @@
+name: Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: azure-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-harvest-prod' }}
+  AZURE_LOCATION: ${{ vars.AZURE_LOCATION || 'centralindia' }}
+  TAG: ${{ github.sha }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    environment: azure
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve deployer principal
+        run: |
+          set -euo pipefail
+          principal_id="$(az ad sp show --id "${{ secrets.AZURE_CLIENT_ID }}" --query id --output tsv)"
+          echo "DEPLOYER_PRINCIPAL_ID=${principal_id}" >> "$GITHUB_ENV"
+
+      - name: Deploy platform
+        run: |
+          set -euo pipefail
+          az group create --name "${AZURE_RESOURCE_GROUP}" --location "${AZURE_LOCATION}" --output none
+          az deployment group create \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --name harvest-platform \
+            --template-file infra/azure/platform.bicep \
+            --parameters \
+              location="${AZURE_LOCATION}" \
+              swaLocation=eastasia \
+              deployerPrincipalId="${DEPLOYER_PRINCIPAL_ID}" \
+              webOrigins='http://localhost:5173,https://eco-organic-store.com,https://www.eco-organic-store.com' \
+            --output none
+
+          ACR_NAME="$(az deployment group show -g "${AZURE_RESOURCE_GROUP}" -n harvest-platform --query properties.outputs.acrName.value -o tsv)"
+          ACR_LOGIN_SERVER="$(az deployment group show -g "${AZURE_RESOURCE_GROUP}" -n harvest-platform --query properties.outputs.acrLoginServer.value -o tsv)"
+          ENVIRONMENT_NAME="$(az deployment group show -g "${AZURE_RESOURCE_GROUP}" -n harvest-platform --query properties.outputs.environmentName.value -o tsv)"
+          IDENTITY_NAME="$(az deployment group show -g "${AZURE_RESOURCE_GROUP}" -n harvest-platform --query properties.outputs.identityName.value -o tsv)"
+          KEY_VAULT_NAME="$(az deployment group show -g "${AZURE_RESOURCE_GROUP}" -n harvest-platform --query properties.outputs.keyVaultName.value -o tsv)"
+          SWA_NAME="$(az deployment group show -g "${AZURE_RESOURCE_GROUP}" -n harvest-platform --query properties.outputs.swaName.value -o tsv)"
+          SWA_DEFAULT_HOSTNAME="$(az deployment group show -g "${AZURE_RESOURCE_GROUP}" -n harvest-platform --query properties.outputs.swaDefaultHostname.value -o tsv)"
+          LOCATION="$(az deployment group show -g "${AZURE_RESOURCE_GROUP}" -n harvest-platform --query properties.outputs.location.value -o tsv)"
+
+          echo "ACR_NAME=${ACR_NAME}" >> "$GITHUB_ENV"
+          echo "ACR_LOGIN_SERVER=${ACR_LOGIN_SERVER}" >> "$GITHUB_ENV"
+          echo "ENVIRONMENT_NAME=${ENVIRONMENT_NAME}" >> "$GITHUB_ENV"
+          echo "IDENTITY_NAME=${IDENTITY_NAME}" >> "$GITHUB_ENV"
+          echo "KEY_VAULT_NAME=${KEY_VAULT_NAME}" >> "$GITHUB_ENV"
+          echo "SWA_NAME=${SWA_NAME}" >> "$GITHUB_ENV"
+          echo "SWA_DEFAULT_HOSTNAME=${SWA_DEFAULT_HOSTNAME}" >> "$GITHUB_ENV"
+          echo "LOCATION=${LOCATION}" >> "$GITHUB_ENV"
+
+      - name: Sync application secrets to Key Vault
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${JWT_SECRET}" ]; then
+            echo "GitHub environment secret JWT_SECRET is required." >&2
+            exit 1
+          fi
+          if [ -z "${INTERNAL_API_KEY}" ]; then
+            echo "GitHub environment secret INTERNAL_API_KEY is required." >&2
+            exit 1
+          fi
+          set_secret() {
+            az keyvault secret set --vault-name "${KEY_VAULT_NAME}" --name "$1" --value "$2" --output none
+          }
+          set_secret jwt-secret "${JWT_SECRET}"
+          set_secret internal-api-key "${INTERNAL_API_KEY}"
+          set_secret admin-password "${ADMIN_PASSWORD:- }"
+          set_secret stripe-secret-key "${STRIPE_SECRET_KEY:- }"
+          set_secret stripe-webhook-secret "${STRIPE_WEBHOOK_SECRET:- }"
+          set_secret google-client-id "${GOOGLE_CLIENT_ID:- }"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name "${ACR_NAME}"
+
+      - name: Bake and push images
+        uses: docker/bake-action@v6
+        env:
+          REGISTRY: ${{ env.ACR_LOGIN_SERVER }}
+          TAG: ${{ env.TAG }}
+        with:
+          files: docker-bake.hcl
+          targets: java
+          push: true
+          provenance: false
+          sbom: false
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+
+      - name: Deploy container apps
+        run: |
+          set -euo pipefail
+          storefront_url="${{ vars.STOREFRONT_URL }}"
+          if [ -z "${storefront_url}" ]; then
+            storefront_url="https://${SWA_DEFAULT_HOSTNAME}"
+          fi
+          web_origins="http://localhost:5173,https://eco-organic-store.com,https://www.eco-organic-store.com,https://${SWA_DEFAULT_HOSTNAME}"
+          az deployment group create \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --name harvest-apps \
+            --template-file infra/azure/apps.bicep \
+            --parameters \
+              location="${LOCATION}" \
+              imageTag="${TAG}" \
+              acrName="${ACR_NAME}" \
+              environmentName="${ENVIRONMENT_NAME}" \
+              identityName="${IDENTITY_NAME}" \
+              keyVaultName="${KEY_VAULT_NAME}" \
+              storefrontUrl="${storefront_url}" \
+              webOrigins="${web_origins}" \
+              gatewayMinReplicas="${{ vars.GATEWAY_MIN_REPLICAS || 0 }}" \
+            --output none
+          gateway_url="$(az deployment group show -g "${AZURE_RESOURCE_GROUP}" -n harvest-apps --query properties.outputs.gatewayUrl.value -o tsv)"
+          echo "GATEWAY_URL=${gateway_url}" >> "$GITHUB_ENV"
+          echo "STOREFRONT_URL=${storefront_url}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build storefront
+        working-directory: frontend
+        env:
+          VITE_BASE_PATH: /
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VITE_API_BASE}" ]; then
+            VITE_API_BASE="${GATEWAY_URL}"
+          fi
+          export VITE_API_BASE
+          echo "Building storefront against ${VITE_API_BASE}"
+          npm ci
+          npm run build
+          cp staticwebapp.config.json dist/staticwebapp.config.json
+
+      - name: Deploy Static Web App
+        env:
+          DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          token="${DEPLOYMENT_TOKEN}"
+          if [ -z "${token}" ]; then
+            token="$(az staticwebapp secrets list --name "${SWA_NAME}" --resource-group "${AZURE_RESOURCE_GROUP}" --query properties.apiKey --output tsv)"
+          fi
+          npx --yes @azure/static-web-apps-cli deploy frontend/dist \
+            --deployment-token "${token}" \
+            --env production
+
+      - name: Summary
+        run: |
+          {
+            echo "## Harvest Azure"
+            echo "- Storefront: ${STOREFRONT_URL}"
+            echo "- Gateway: ${GATEWAY_URL}"
+            echo "- Attach custom domains (see infra/azure/README.md) before treating login as production."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -54,3 +54,6 @@ coverage/
 *.swp
 *.swo
 .cache/
+
+# Bicep compile output
+infra/azure/**/*.json

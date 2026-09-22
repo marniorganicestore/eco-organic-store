@@ -9,13 +9,13 @@ Act as a **Sr. Java Full Stack Architect** and **Sr. UX/UI Designer**. Prefer bo
 
 ## Product
 
-Organic e-store **Harvest & Co.** Currency **INR** stored as `*Paise` (`long`). The browser talks **only** to the gateway (`:8080`). Vite proxies `/api` → gateway.
+Organic e-store **Harvest & Co.** Currency **INR** stored as `*Paise` (`long`). The browser talks **only** to the gateway. Locally Vite proxies `/api` → `:8080`. In Azure the SPA calls `VITE_API_BASE` (custom domain `https://api.eco-organic-store.com`).
 
 ## Stack (do not downgrade)
 
 Java 21 · **virtual threads** · Spring Boot 4.1.1 · Spring Cloud 2025.1.3 · Gateway **WebMVC** · MongoDB 8 · React 19 · Vite 8 · Tailwind 4 · TanStack Query · Zustand · Stripe Checkout (test)
 
-Local infra is repo `docker-compose.yml` (Mongo 8 + `--profile app`). Do not add MySQL, Redis, or Spring Boot docker-compose auto-start.
+Local infra is repo `docker-compose.yml` (Mongo 8 + `--profile app`). Hosted infra is Azure Container Apps + Cosmos DB for MongoDB + Static Web Apps (`infra/azure`). Do not add MySQL, Redis, AKS, or Spring Boot docker-compose auto-start.
 
 ## Modules and ports
 
@@ -27,13 +27,13 @@ Packages live under `com.harvest.{module}` with `web` / `service` / `repo` / `do
 
 - **Database-per-service.** Mongo documents never leave their module. Public APIs use records/DTOs.
 - Inter-service calls: `RestClient` + `X-Internal-Key` on `/internal/**`. No OpenFeign, Eureka, Kafka, or Config Server.
-- Gateway is the only public entry. **Never route `/internal/**`.** CORS only on the gateway (`http://localhost:5173`).
+- Gateway is the only public API. **Never route `/internal/**`.** CORS only on the gateway (localhost + the Azure storefront origin).
 - Catalog has **no stock field**. Inventory owns `onHand` / `reserved`. Available = onHand − reserved.
 - Checkout: snapshot cart → reserve stock → `PENDING_PAYMENT` → Stripe → confirm reservation + clear cart. Never decrement `onHand` until paid. TTL release is the backup.
 - Order line items snapshot **name + pricePaise** at checkout.
-- Secrets stay in `.env`. Do not invent new services, ports, or BOMs.
+- Secrets stay in `.env` locally and Azure Key Vault in production. Do not invent new services, ports, or BOMs.
 - Keep Mongo documents off the API: records/DTOs, constructor injection, centralized `ProblemDetail` errors.
 
 ## Out of scope (v1)
 
-Kafka/outbox, Eureka, K8s, Spring Cloud Config, SSR, multi-currency, image CDN upload, coupons, wishlist, AWS EC2 deploy pipelines.
+Kafka/outbox, Eureka, AKS/K8s, Spring Cloud Config, SSR, multi-currency, image CDN upload, coupons, wishlist, AWS EC2 deploy pipelines.

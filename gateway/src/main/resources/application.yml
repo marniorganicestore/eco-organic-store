@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   application:
@@ -49,4 +49,4 @@ app:
   jwt:
     secret: ${JWT_SECRET:change-me-please-change-me-please-change-me-please}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://eco-organic-store.com,https://www.eco-organic-store.com,https://marniorganicestore.github.io}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://eco-organic-store.com,https://www.eco-organic-store.com}

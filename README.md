@@ -1,8 +1,8 @@
 # Harvest & Co. Organic E-Store (Microservices)
 
 [![CI](https://github.com/dmarni/harvest-co/actions/workflows/ci.yml/badge.svg)](https://github.com/dmarni/harvest-co/actions/workflows/ci.yml)
+[![Azure](https://github.com/dmarni/harvest-co/actions/workflows/azure.yml/badge.svg)](https://github.com/dmarni/harvest-co/actions/workflows/azure.yml)
 [![Docker](https://github.com/dmarni/harvest-co/actions/workflows/docker.yml/badge.svg)](https://github.com/dmarni/harvest-co/actions/workflows/docker.yml)
-[![Pages](https://github.com/dmarni/harvest-co/actions/workflows/pages.yml/badge.svg)](https://github.com/dmarni/harvest-co/actions/workflows/pages.yml)
 
 Full-stack organic e-store built with Spring Boot 4.1 microservices, MongoDB, and React 19.
 
@@ -80,35 +80,38 @@ npm run dev
 
 There is no Kubernetes target in v1. **App CD is: squash-merge a green PR into `main`.** Direct pushes to `main` should be blocked by the ruleset below.
 
-On push to `main`, Docker Bake builds every module and pushes to **GHCR** (`ghcr.io/<owner>/harvest-co/<service>:<sha>` and `:latest`). Pull requests bake without pushing. Images are not a required status check until you add **Docker** next to **CI**.
+Production is **Azure** (not GitHub Pages). On push to `main`, `.github/workflows/azure.yml` logs in with OIDC, deploys `infra/azure`, pushes Java images to Azure Container Registry, updates the eight Container Apps, and publishes the Vite `dist` to Azure Static Web Apps. One-time subscription setup: [`infra/azure/README.md`](infra/azure/README.md).
 
 ```text
-ghcr.io/dmarni/harvest-co/gateway
-ghcr.io/dmarni/harvest-co/identity-service
-ghcr.io/dmarni/harvest-co/catalog-service
-ghcr.io/dmarni/harvest-co/cart-service
-ghcr.io/dmarni/harvest-co/inventory-service
-ghcr.io/dmarni/harvest-co/order-service
-ghcr.io/dmarni/harvest-co/payment-service
-ghcr.io/dmarni/harvest-co/review-service
-ghcr.io/dmarni/harvest-co/frontend
+Browser  https://eco-organic-store.com     Azure Static Web Apps
+              │
+              ▼
+         https://api.eco-organic-store.com  Container App gateway (public)
+              │
+              ▼
+         identity · catalog · cart · inventory · order · payment · review
+         (Container Apps, internal ingress)
+              │
+              ▼
+         Cosmos DB for MongoDB (serverless) — one account, seven databases
 ```
 
-The Vite storefront **static `dist`** deploys to GitHub Pages on push to `main` (frontend paths) or via **Actions → GitHub Pages → Run workflow**. `GITHUB_TOKEN` cannot create a Pages site in this org (`Resource not accessible by integration`). An owner must enable it **once**: **Settings → Pages → Build and deployment → Source: GitHub Actions**. Private repos need GitHub Pro/Team for Pages. Then re-run the workflow.
+The gateway is the only public API. Domain services are not on the internet. Secrets live in Azure Key Vault; GitHub environment `azure` holds OIDC + the values synced on each deploy (`JWT_SECRET`, `INTERNAL_API_KEY`, Stripe, admin seed).
 
-**Site URL:** [https://eco-organic-store.com](https://eco-organic-store.com) (asset `base` is `/`). The Pages workflow defaults `VITE_BASE_PATH` to `/` so JS/CSS load at `/assets/...`. Set repo variable `VITE_BASE_PATH` to `/harvest-co/` only if you drop the custom domain and use [https://marniorganicestore.github.io/harvest-co/](https://marniorganicestore.github.io/harvest-co/). After changing base or domain, re-run **Actions → GitHub Pages**. This is HTML/JS only — catalog, cart, and checkout still need a hosted gateway. Optional repo **variable** `VITE_API_BASE` prefixes `/api` calls; leave it empty for local Vite proxy. Gateway `CORS_ALLOWED_ORIGINS` must include `https://eco-organic-store.com` (and `www`) if you point at a public API.
+**Site URL:** [https://eco-organic-store.com](https://eco-organic-store.com) (asset `base` is `/`). Set repo variable `VITE_API_BASE` to `https://api.eco-organic-store.com` after the custom domain is on the gateway. Until then the workflow bakes the default `*.azurecontainerapps.io` URL into the SPA. Leave `VITE_API_BASE` unset for local Vite (`/api` proxy). Gateway `CORS_ALLOWED_ORIGINS` must include the live storefront origin.
 
-Pull requests and pushes to `main` run GitHub Actions:
+Pull requests bake images without pushing (`.github/workflows/docker.yml`). Pull requests and pushes to `main` run GitHub Actions:
 
 | Job | What it proves |
 |---|---|
 | Backend | Java 21, `./mvnw -T 1C verify` across all modules |
 | Frontend | `npm ci`, oxlint, TypeScript + Vite production build |
 | Compose | `docker-compose.yml` is valid |
+| Bicep | `infra/azure/platform.bicep` and `apps.bicep` compile |
 | Secrets | Gitleaks CLI scan of the commit graph (`.env.example` allowlisted; no org license) |
 | CI | Aggregate gate — **this is the only required status check** |
-| Docker | Bake service images; push to GHCR on `main` (not required) |
-| GitHub Pages | Vite production `dist` → Pages (not a required check) |
+| Docker | Bake service images on PRs (not required) |
+| Azure | OIDC deploy to Container Apps + Static Web Apps on `main` (not a required check) |
 
 CodeQL runs on public clones only (GitHub Advanced Security is required to upload alerts on private repos). Dependabot opens weekly grouped PRs for Maven, npm, Actions, and Compose images. Secrets stay in `.env` (see `.env.example`); they are never committed.
 

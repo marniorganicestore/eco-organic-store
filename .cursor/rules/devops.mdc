@@ -21,7 +21,7 @@ Keep `.github/workflows/ci.yml` as the required check:
 - Compose: `docker compose --profile app --profile tools config`
 - Secrets: gitleaks
 
-Image bake/push is `.github/workflows/docker.yml` (GHCR). Do not add AWS EC2, Kubernetes, or Spring Cloud Config pipelines (v1 out of scope).
+Production CD is `.github/workflows/azure.yml` (OIDC → ACR → Container Apps + Static Web Apps). `.github/workflows/docker.yml` only bakes on PRs (optional GHCR via workflow_dispatch). Do not add AWS EC2, AKS, or Spring Cloud Config pipelines (v1 out of scope).
 
 ## Images
 

@@ -12,8 +12,9 @@ function normalizeBase(raw: string | undefined): string {
 }
 
 /**
- * GitHub Pages has no SPA rewrite. Copy index.html onto known routes so
- * /shop (and friends) return 200, and keep 404.html for /product/:slug.
+ * Static hosts without a rewrite (and local nginx) still need index.html
+ * on known routes. Azure Static Web Apps uses staticwebapp.config.json;
+ * 404.html covers /product/:slug on hosts that only map 404 → index.
  */
 const SPA_FALLBACK_PAGES = [
   'shop/index.html',

@@ -20,6 +20,19 @@ group "default" {
   ]
 }
 
+group "java" {
+  targets = [
+    "gateway",
+    "identity-service",
+    "catalog-service",
+    "cart-service",
+    "inventory-service",
+    "order-service",
+    "payment-service",
+    "review-service"
+  ]
+}
+
 target "_java" {
   context = "."
   dockerfile = "Dockerfile"
