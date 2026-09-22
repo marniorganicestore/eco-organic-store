@@ -41,21 +41,27 @@ pwsh -File ./infra/azure/bootstrap.ps1 -SubscriptionId '<subscription-guid>' -Gi
 
 ## Custom domains (required for reliable login)
 
-Until DNS moves, the workflow uses the default `*.azurestaticapps.net` and `*.azurecontainerapps.io` hosts. Those are **cross-site**, so the refresh cookie is `SameSite=None; Secure`. Chrome still partitions third-party cookies — attach the real hostnames before you treat auth as production.
+Nameservers are GoDaddy (`ns59` / `ns60.domaincontrol.com`). Today the apex still points at GitHub Pages (`185.199.x`). Replace those records, then bind Azure.
 
-Turn off GitHub Pages after the first successful Azure deploy (Settings → Pages → None) so `eco-organic-store.com` is not still served from the old static site.
+Create a **production** API key at [developer.godaddy.com/keys](https://developer.godaddy.com/keys) and run:
 
-| Host | Azure resource | DNS |
-|---|---|---|
-| `eco-organic-store.com` / `www` | Static Web App `swa-harvest` | CNAME to the SWA default host (remove the GitHub Pages record) |
-| `api.eco-organic-store.com` | Container App `gateway` | Container Apps custom domain + CNAME |
+```powershell
+pwsh -File ./infra/azure/godaddy-dns.ps1 -ApiKey '<key>' -ApiSecret '<secret>'
+pwsh -File ./infra/azure/bind-custom-domains.ps1
+```
 
-Then set repo variables:
+Or paste this in GoDaddy → DNS (delete the GitHub Pages `A` / `AAAA` on `@` and the `www` CNAME to `marniorganicestore.github.io`):
 
-- `STOREFRONT_URL=https://eco-organic-store.com`
-- `VITE_API_BASE=https://api.eco-organic-store.com`
+| Type | Name | Value | TTL |
+|---|---|---|---|
+| CNAME | `www` | `orange-smoke-074631600.3.azurestaticapps.net` | 600 |
+| CNAME | `@` | `orange-smoke-074631600.3.azurestaticapps.net` | 600 |
+| CNAME | `api` | `gateway.redforest-7e8aefa3.centralindia.azurecontainerapps.io` | 600 |
+| TXT | `asuid.api` | `A17E344185B44624340C851146A6077ED21CB66DDC93C1C2BD0ED0CE313ECB83` | 600 |
 
-Stripe webhook endpoint: `https://api.eco-organic-store.com/api/webhooks/stripe`.
+GoDaddy often rejects a CNAME on `@`. If it does, leave `@` as a **301 forward** to `https://www.eco-organic-store.com`. Then run `bind-custom-domains.ps1` (it waits for DNS, attaches managed TLS, sets `STOREFRONT_URL` / `VITE_API_BASE`, and turns off GitHub Pages).
+
+Re-run **Actions → Azure** after bind so the SPA is compiled against `https://api.eco-organic-store.com`. Stripe webhook: `https://api.eco-organic-store.com/api/webhooks/stripe`.
 
 ## What GitHub Actions deploys
 
