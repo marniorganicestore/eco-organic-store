@@ -15,7 +15,6 @@ param(
     [string] $SubscriptionId,
 
     [Parameter(Mandatory = $true)]
-    [ValidatePattern('^[^/]+/[^/]+$')]
     [string] $GitHubRepo,
 
     [string] $ResourceGroup = 'rg-harvest-prod',
@@ -24,6 +23,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Accept owner/repo or a github.com URL (with or without .git).
+$GitHubRepo = $GitHubRepo.Trim() -replace '^https?://github\.com/', '' -replace '\.git$', '' -replace '/+$', ''
+if ($GitHubRepo -notmatch '^[^/]+/[^/]+$') {
+    throw "GitHubRepo must be 'owner/repo' (example: marniorganicestore/harvest-co). Got: $GitHubRepo"
+}
 
 az account set --subscription $SubscriptionId
 if ($LASTEXITCODE -ne 0) { throw "az account set failed. Run az login first." }

@@ -15,7 +15,15 @@ Local development is unchanged (`docker-compose.yml` + Mongo 8). This folder is 
 ## One-time bootstrap
 
 1. Azure CLI logged in, Owner or User Access Administrator on the subscription.
-2. From the repo root:
+2. From the repo root, in **PowerShell 7** (`pwsh`). Windows PowerShell 5.1 cannot run this script.
+
+   Open a new terminal and type `pwsh`, or call it from any prompt:
+
+```powershell
+pwsh -File ./infra/azure/bootstrap.ps1 -SubscriptionId '<subscription-guid>' -GitHubRepo '<owner>/<repo>'
+```
+
+   `GitHubRepo` is `owner/repo` (for example `marniorganicestore/harvest-co`), not a clone URL. If you stay in `pwsh` you can also use backticks for a multi-line call:
 
 ```powershell
 ./infra/azure/bootstrap.ps1 `
