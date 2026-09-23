@@ -5,8 +5,14 @@ param environmentName string
 param identityName string
 param keyVaultName string
 
-@description('Public storefront origin used for Stripe redirects, e.g. https://eco-organic-store.com')
+@description('Public storefront origin used for Stripe redirects and password-reset links, e.g. https://eco-organic-store.com')
 param storefrontUrl string
+
+@description('Send mail from admin@eco-organic-store.com when true. Requires mailHost and Key Vault secret mail-password.')
+param mailEnabled string = 'false'
+
+@description('SMTP submission host, for example smtp.office365.com. Empty keeps mail in the identity log.')
+param mailHost string = ''
 
 @description('Gateway CORS allow-list (comma-separated origins).')
 param webOrigins string
@@ -105,6 +111,7 @@ module identityService 'modules/container-app.bicep' = {
       'cosmos-identity-uri'
       'google-client-id'
       'admin-password'
+      'mail-password'
     ]
     envVars: [
       { name: 'JWT_SECRET', secretRef: 'jwt-secret' }
@@ -115,11 +122,14 @@ module identityService 'modules/container-app.bicep' = {
       { name: 'COOKIE_SECURE', value: 'true' }
       { name: 'COOKIE_SAME_SITE', value: 'None' }
       { name: 'STOREFRONT_URL', value: storefrontUrl }
-      { name: 'MAIL_ENABLED', value: 'false' }
+      { name: 'MAIL_ENABLED', value: mailEnabled }
+      { name: 'MAIL_HOST', value: mailHost }
+      { name: 'MAIL_PORT', value: '587' }
+      { name: 'MAIL_USERNAME', value: 'admin@eco-organic-store.com' }
+      { name: 'MAIL_PASSWORD', secretRef: 'mail-password' }
       { name: 'MAIL_FROM', value: 'admin@eco-organic-store.com' }
       { name: 'MAIL_FROM_NAME', value: 'Marni eco organic store' }
       { name: 'MAIL_ADMIN', value: 'admin@eco-organic-store.com' }
-      { name: 'MAIL_USERNAME', value: 'admin@eco-organic-store.com' }
     ]
   }
 }

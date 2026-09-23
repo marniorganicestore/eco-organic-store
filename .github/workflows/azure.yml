@@ -82,6 +82,7 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
         run: |
           set -euo pipefail
           if [ -z "${JWT_SECRET}" ]; then
@@ -101,6 +102,7 @@ jobs:
           set_secret stripe-secret-key "${STRIPE_SECRET_KEY:- }"
           set_secret stripe-webhook-secret "${STRIPE_WEBHOOK_SECRET:- }"
           set_secret google-client-id "${GOOGLE_CLIENT_ID:- }"
+          set_secret mail-password "${MAIL_PASSWORD:- }"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -144,6 +146,8 @@ jobs:
               storefrontUrl="${storefront_url}" \
               webOrigins="${web_origins}" \
               gatewayMinReplicas="${{ vars.GATEWAY_MIN_REPLICAS || 0 }}" \
+              mailEnabled="${{ vars.MAIL_ENABLED || 'false' }}" \
+              mailHost="${{ vars.MAIL_HOST || '' }}" \
             --output none
           gateway_url="$(az deployment group show -g "${AZURE_RESOURCE_GROUP}" -n harvest-apps --query properties.outputs.gatewayUrl.value -o tsv)"
           echo "GATEWAY_URL=${gateway_url}" >> "$GITHUB_ENV"
