@@ -12,6 +12,10 @@
 
   Create a production key at https://developer.godaddy.com/keys
   (environment: production, not OTE).
+
+  ApiVerificationId is the Container Apps domain verification id (public TXT
+  value, not a credential). Read it with:
+    az containerapp env show -g rg-harvest-prod -n cae-harvest --query properties.customDomainVerificationId -o tsv
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -20,10 +24,12 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $ApiSecret,
 
+    [Parameter(Mandatory = $true)]
+    [string] $ApiVerificationId,
+
     [string] $Domain = 'eco-organic-store.com',
     [string] $StorefrontTarget = 'orange-smoke-074631600.3.azurestaticapps.net',
-    [string] $GatewayTarget = 'gateway.redforest-7e8aefa3.centralindia.azurecontainerapps.io',
-    [string] $ApiVerificationId = 'A17E344185B44624340C851146A6077ED21CB66DDC93C1C2BD0ED0CE313ECB83'
+    [string] $GatewayTarget = 'gateway.redforest-7e8aefa3.centralindia.azurecontainerapps.io'
 )
 
 $ErrorActionPreference = 'Stop'

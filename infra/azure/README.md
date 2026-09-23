@@ -46,18 +46,19 @@ Nameservers are GoDaddy (`ns59` / `ns60.domaincontrol.com`). Today the apex stil
 Create a **production** API key at [developer.godaddy.com/keys](https://developer.godaddy.com/keys) and run:
 
 ```powershell
-pwsh -File ./infra/azure/godaddy-dns.ps1 -ApiKey '<key>' -ApiSecret '<secret>'
+$verificationId = az containerapp env show -g rg-harvest-prod -n cae-harvest --query properties.customDomainVerificationId -o tsv
+pwsh -File ./infra/azure/godaddy-dns.ps1 -ApiKey '<key>' -ApiSecret '<secret>' -ApiVerificationId $verificationId
 pwsh -File ./infra/azure/bind-custom-domains.ps1
 ```
 
-Or paste this in GoDaddy → DNS (delete the GitHub Pages `A` / `AAAA` on `@` and the `www` CNAME to `marniorganicestore.github.io`):
+Or paste this in GoDaddy → DNS (delete the GitHub Pages `A` / `AAAA` on `@` and the `www` CNAME to `marniorganicestore.github.io`). Use the same verification id for the TXT record:
 
 | Type | Name | Value | TTL |
 |---|---|---|---|
 | CNAME | `www` | `orange-smoke-074631600.3.azurestaticapps.net` | 600 |
 | CNAME | `@` | `orange-smoke-074631600.3.azurestaticapps.net` | 600 |
 | CNAME | `api` | `gateway.redforest-7e8aefa3.centralindia.azurecontainerapps.io` | 600 |
-| TXT | `asuid.api` | `A17E344185B44624340C851146A6077ED21CB66DDC93C1C2BD0ED0CE313ECB83` | 600 |
+| TXT | `asuid.api` | `<customDomainVerificationId>` | 600 |
 
 GoDaddy often rejects a CNAME on `@`. If it does, leave `@` as a **301 forward** to `https://www.eco-organic-store.com`. Then run `bind-custom-domains.ps1` (it waits for DNS, attaches managed TLS, sets `STOREFRONT_URL` / `VITE_API_BASE`, and turns off GitHub Pages).
 

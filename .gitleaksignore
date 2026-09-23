@@ -1,0 +1,3 @@
+# Historical Container Apps domain-verification id. It is a public DNS TXT value, not a credential.
+# The default was removed from godaddy-dns.ps1; this fingerprint keeps the introducing commit from failing the full-history scan.
+723090d300401c2864dd1f869ef5e7f5f13165b3:infra/azure/godaddy-dns.ps1:generic-api-key:26
