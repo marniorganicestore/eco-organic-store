@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM eclipse-temurin:21-jdk-noble AS maven
+FROM eclipse-temurin:25-jdk-noble AS maven
 WORKDIR /src
 COPY . .
 RUN --mount=type=cache,target=/root/.m2 \
@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/root/.m2 \
          cp "$jar" "/out/$m.jar"; \
        done
 
-FROM eclipse-temurin:21-jre-noble AS runtime
+FROM eclipse-temurin:25-jre-noble AS runtime
 WORKDIR /app
 ARG MODULE
 RUN groupadd --system store && useradd --system --gid store --no-create-home store
