@@ -4,6 +4,7 @@ import com.harvest.common.security.JwtService;
 import com.harvest.common.web.UnauthorizedException;
 import com.harvest.identity.domain.User;
 import com.harvest.identity.repo.UserRepository;
+import com.harvest.identity.web.AuthDtos.ChangePasswordRequest;
 import com.harvest.identity.web.AuthDtos.ConfirmResetRequest;
 import com.harvest.identity.web.AuthDtos.LoginRequest;
 import com.harvest.identity.web.AuthDtos.RequestResetRequest;
@@ -18,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.never;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -204,6 +206,53 @@ class AuthServiceTest {
                 UnauthorizedException.class,
                 () -> authService.refresh(new MockHttpServletRequest(), new MockHttpServletResponse()));
         assertEquals("Missing refresh token", exception.getMessage());
+    }
+
+    @Test
+    void changePasswordRotatesTheSessionWhenTheCurrentPasswordMatches() {
+        UserRepository userRepository = mock(UserRepository.class);
+        PasswordEncoder encoder = mock(PasswordEncoder.class);
+        JwtService jwtService = mock(JwtService.class);
+        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax");
+        User user = customer("u-1", 2);
+        user.setPasswordHash("hash");
+        when(userRepository.findById("u-1")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(encoder.matches("current-password", "hash")).thenReturn(true);
+        when(encoder.matches("new-password-1", "hash")).thenReturn(false);
+        when(encoder.encode("new-password-1")).thenReturn("new-hash");
+        when(jwtService.createAccessToken(eq("u-1"), eq("user@harvest.co"), anyList(), anyLong())).thenReturn("next-access");
+        when(jwtService.createRefreshToken(eq("u-1"), eq("user@harvest.co"), anyList(), anyLong(), eq(3))).thenReturn("next-refresh");
+
+        var response = new MockHttpServletResponse();
+        var result = authService.changePassword("u-1", new ChangePasswordRequest("current-password", "new-password-1"), response);
+
+        assertEquals("next-access", result.accessToken());
+        assertEquals("new-hash", user.getPasswordHash());
+        assertEquals(3, user.getRefreshTokenVersion());
+        assertTrue(response.getHeader("Set-Cookie").contains("refreshToken=next-refresh"));
+    }
+
+    @Test
+    void changePasswordRejectsGoogleAccountsAndAWrongCurrentPassword() {
+        UserRepository userRepository = mock(UserRepository.class);
+        PasswordEncoder encoder = mock(PasswordEncoder.class);
+        AuthService authService = new AuthService(userRepository, encoder, mock(JwtService.class), false, "Lax");
+        User googleUser = customer("u-1", 0);
+        when(userRepository.findById("u-1")).thenReturn(Optional.of(googleUser));
+
+        IllegalArgumentException googleOnly = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.changePassword("u-1", new ChangePasswordRequest("current-password", "new-password-1"), new MockHttpServletResponse()));
+        assertEquals("This account signs in with Google and does not have a password.", googleOnly.getMessage());
+
+        googleUser.setPasswordHash("hash");
+        when(encoder.matches("wrong-password", "hash")).thenReturn(false);
+        IllegalArgumentException wrongCurrent = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.changePassword("u-1", new ChangePasswordRequest("wrong-password", "new-password-1"), new MockHttpServletResponse()));
+        assertEquals("Current password is incorrect.", wrongCurrent.getMessage());
+        verify(userRepository, never()).save(any());
     }
 
     @Test

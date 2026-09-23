@@ -3,14 +3,20 @@ package com.harvest.identity.web;
 import com.harvest.common.security.AuthGuards;
 import com.harvest.identity.service.AuthService;
 import com.harvest.identity.service.GoogleIdTokenVerifierService;
-import com.harvest.identity.web.AuthDtos.*;
+import com.harvest.identity.web.AuthDtos.AuthResponse;
+import com.harvest.identity.web.AuthDtos.ConfirmResetRequest;
+import com.harvest.identity.web.AuthDtos.GoogleRequest;
+import com.harvest.identity.web.AuthDtos.LoginRequest;
+import com.harvest.identity.web.AuthDtos.MessageResponse;
+import com.harvest.identity.web.AuthDtos.RegisterRequest;
+import com.harvest.identity.web.AuthDtos.RequestResetRequest;
+import com.harvest.identity.web.AuthDtos.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -55,26 +61,10 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/api/me")
-    public UserResponse me(HttpServletRequest request) {
-        String userId = AuthGuards.requireUser(request).userId();
-        var user = authService.getMe(userId);
-        return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getAvatar(), user.getRoles(), user.getAddresses());
-    }
-
-    @PatchMapping("/api/me")
-    public UserResponse updateMe(HttpServletRequest request, @RequestBody ProfileRequest profileRequest) {
-        String userId = AuthGuards.requireUser(request).userId();
-        var user = authService.updateMe(userId, profileRequest);
-        return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getAvatar(), user.getRoles(), user.getAddresses());
-    }
-
     @GetMapping("/api/admin/users")
     public List<UserResponse> users(HttpServletRequest request) {
         AuthGuards.requireAdmin(request);
-        return authService.allUsers().stream()
-                .map(u -> new UserResponse(u.getId(), u.getEmail(), u.getName(), u.getAvatar(), u.getRoles(), u.getAddresses()))
-                .toList();
+        return authService.allUsers().stream().map(ProfileMapper::toUser).toList();
     }
 
     @PostMapping("/api/auth/request-reset")

@@ -14,10 +14,11 @@ public class User {
     private String email;
     private String name;
     private String avatar;
+    private String phone;
     private String passwordHash;
     private String googleSub;
     private List<String> roles = new ArrayList<>(List.of("CUSTOMER"));
-    private List<String> addresses = new ArrayList<>();
+    private List<Address> addresses = new ArrayList<>();
     private int refreshTokenVersion = 0;
 
     public String getId() { return id; }
@@ -28,14 +29,24 @@ public class User {
     public void setName(String name) { this.name = name; }
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public String getGoogleSub() { return googleSub; }
     public void setGoogleSub(String googleSub) { this.googleSub = googleSub; }
     public List<String> getRoles() { return roles; }
     public void setRoles(List<String> roles) { this.roles = roles; }
-    public List<String> getAddresses() { return addresses; }
-    public void setAddresses(List<String> addresses) { this.addresses = addresses; }
+    public List<Address> getAddresses() {
+        if (addresses == null) {
+            addresses = new ArrayList<>();
+        }
+        return addresses;
+    }
+
+    public void setAddresses(List<Address> addresses) {
+        this.addresses = addresses == null ? new ArrayList<>() : addresses;
+    }
     public int getRefreshTokenVersion() { return refreshTokenVersion; }
     public void setRefreshTokenVersion(int refreshTokenVersion) { this.refreshTokenVersion = refreshTokenVersion; }
 }

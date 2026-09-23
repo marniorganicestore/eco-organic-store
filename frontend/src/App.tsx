@@ -1,7 +1,7 @@
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { authApi, api } from './lib/api'
+import { ApiError, authApi, api } from './lib/api'
 import { RequireAdmin, RequireAuth } from './components/auth/RequireAuth'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -9,6 +9,16 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import { useAuthStore } from './store/authStore'
 import { useCartStore } from './store/cartStore'
 import { HomeHero } from './components/home/HomeHero'
+import { AccountLayout } from './components/account/AccountLayout'
+import { UserAvatar } from './components/account/UserAvatar'
+import { ShippingAddressPicker } from './components/checkout/ShippingAddressPicker'
+import { useCheckoutAddress } from './hooks/useCheckoutAddress'
+import { FormBanner } from './components/account/FormBanner'
+import ProfilePage from './pages/account/ProfilePage'
+import AddressesPage from './pages/account/AddressesPage'
+import SecurityPage from './pages/account/SecurityPage'
+import OrdersPage from './pages/account/OrdersPage'
+import { firstName } from './lib/userDisplay'
 import { harvestBtn, harvestBtnGhost, harvestCard, harvestInput, PageShell } from './components/layout/PageShell'
 
 type Product = {
@@ -29,17 +39,6 @@ type Product = {
 type Category = { id: string; slug: string; name: string }
 
 type CartItem = { productId: string; qty: number }
-
-function firstName(name: string): string {
-  return name.trim().split(/\s+/)[0] || name
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return 'H'
-  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase()
-  return `${parts[0].slice(0, 1)}${parts[1].slice(0, 1)}`.toUpperCase()
-}
 
 function Layout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((state) => state.user)
@@ -92,14 +91,14 @@ function Layout({ children }: { children: React.ReactNode }) {
             <Link className={navClass('/cart')} to="/cart">Cart ({qty})</Link>
             {user ? (
               <div className="flex items-center gap-2">
-                {user.avatar ? (
-                  <img className="h-8 w-8 rounded-full object-cover" src={user.avatar} alt="" />
-                ) : (
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-800 text-xs font-medium text-white">
-                    {initials(user.name || user.email)}
-                  </span>
-                )}
-                <span className="hidden max-w-28 truncate text-emerald-900 sm:inline">{firstName(user.name || user.email)}</span>
+                <Link
+                  to="/account"
+                  className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  aria-label={`Account for ${user.name || user.email}`}
+                >
+                  <UserAvatar name={user.name || user.email} avatar={user.avatar} />
+                  <span className="hidden max-w-28 truncate text-emerald-900 sm:inline">{firstName(user.name || user.email)}</span>
+                </Link>
                 <button
                   type="button"
                   className={harvestBtnGhost}
@@ -140,7 +139,12 @@ export default function App() {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
         <Route path="/order/success" element={<OrderSuccess />} />
-        <Route path="/account/orders" element={<RequireAuth><Orders /></RequireAuth>} />
+        <Route path="/account" element={<RequireAuth><AccountLayout /></RequireAuth>}>
+          <Route index element={<ProfilePage />} />
+          <Route path="addresses" element={<AddressesPage />} />
+          <Route path="security" element={<SecurityPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+        </Route>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -308,27 +312,42 @@ function CartPage() {
 }
 
 function CheckoutPage() {
-  const [shippingAddress, setShippingAddress] = useState('')
+  const address = useCheckoutAddress()
+  const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
+
   async function pay() {
-    const res = await api.post<{ checkoutUrl: string }>('/checkout/sessions', { shippingAddress })
-    window.location.href = res.checkoutUrl
+    if (!address.shippingAddress.trim()) {
+      setError('Add a delivery address to continue.')
+      return
+    }
+    setError('')
+    setPending(true)
+    try {
+      const res = await api.post<{ checkoutUrl: string }>('/checkout/sessions', { shippingAddress: address.shippingAddress.trim() })
+      window.location.href = res.checkoutUrl
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to start payment. Please try again.')
+      setPending(false)
+    }
   }
 
   return (
     <PageShell title="Checkout" subtitle="Where should we send this harvest?">
-      <div className={`${harvestCard} max-w-xl p-6`}>
-        <label className="block text-sm font-medium text-slate-800" htmlFor="shipping">
-          Shipping address
-          <textarea
-            id="shipping"
-            className={`${harvestInput} mt-1`}
-            rows={4}
-            value={shippingAddress}
-            onChange={(e) => setShippingAddress(e.target.value)}
-            placeholder="Shipping address"
-          />
-        </label>
-        <button className={`${harvestBtn} mt-4 w-full`} onClick={pay}>Continue to payment</button>
+      <div className={`${harvestCard} max-w-xl space-y-4 p-6`}>
+        {error ? <FormBanner tone="error">{error}</FormBanner> : null}
+        <ShippingAddressPicker
+          loading={address.loading}
+          deliverable={address.deliverable}
+          needsDetails={address.needsDetails}
+          selectedId={address.selectedId}
+          customValue={address.customValue}
+          onSelect={address.select}
+          onCustomChange={address.setCustomValue}
+        />
+        <button className={`${harvestBtn} w-full`} type="button" disabled={pending || address.loading} aria-busy={pending} onClick={pay}>
+          {pending ? 'Starting payment...' : 'Continue to payment'}
+        </button>
       </div>
     </PageShell>
   )
@@ -339,24 +358,6 @@ function OrderSuccess() {
     <PageShell title="Thank you">
       <div className={`${harvestCard} p-8 text-emerald-950`}>
         Order payment completed. Thank you for choosing Harvest &amp; Co.
-      </div>
-    </PageShell>
-  )
-}
-
-function Orders() {
-  const [orders, setOrders] = useState<any[]>([])
-  useEffect(() => { api.get<any[]>('/orders').then(setOrders).catch(() => setOrders([])) }, [])
-  return (
-    <PageShell title="My orders" subtitle="Track packed, shipped, and delivered harvests.">
-      <div className={`${harvestCard} p-6`}>
-        {orders.length === 0
-          ? <p className="text-slate-500">No orders yet.</p>
-          : orders.map((o) => (
-            <div key={o.id} className="mb-2 rounded-xl border border-emerald-100 bg-white/70 p-3 text-sm">
-              {o.orderNumber} • {o.orderStatus}
-            </div>
-          ))}
       </div>
     </PageShell>
   )

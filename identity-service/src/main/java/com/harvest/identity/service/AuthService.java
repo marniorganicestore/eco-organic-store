@@ -5,10 +5,10 @@ import com.harvest.common.web.UnauthorizedException;
 import com.harvest.identity.domain.User;
 import com.harvest.identity.repo.UserRepository;
 import com.harvest.identity.web.AuthDtos.AuthResponse;
+import com.harvest.identity.web.AuthDtos.ChangePasswordRequest;
 import com.harvest.identity.web.AuthDtos.ConfirmResetRequest;
 import com.harvest.identity.web.AuthDtos.LoginRequest;
 import com.harvest.identity.web.AuthDtos.MessageResponse;
-import com.harvest.identity.web.AuthDtos.ProfileRequest;
 import com.harvest.identity.web.AuthDtos.RequestResetRequest;
 import com.harvest.identity.web.AuthDtos.RegisterRequest;
 import io.jsonwebtoken.Claims;
@@ -112,16 +112,21 @@ public class AuthService {
         response.addHeader("Set-Cookie", refreshCookie("", Duration.ZERO).toString());
     }
 
-    public User getMe(String userId) {
-        return userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found"));
-    }
-
-    public User updateMe(String userId, ProfileRequest request) {
-        User user = getMe(userId);
-        user.setName(request.name());
-        user.setAvatar(request.avatar());
-        user.setAddresses(request.addresses());
-        return userRepository.save(user);
+    public AuthResponse changePassword(String userId, ChangePasswordRequest request, HttpServletResponse response) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found."));
+        if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            throw new IllegalArgumentException("This account signs in with Google and does not have a password.");
+        }
+        if (!encoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect.");
+        }
+        if (encoder.matches(request.newPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Choose a password that is different from your current one.");
+        }
+        user.setPasswordHash(encoder.encode(request.newPassword()));
+        user.setRefreshTokenVersion(user.getRefreshTokenVersion() + 1);
+        userRepository.save(user);
+        return issueTokens(user, response);
     }
 
     public List<User> allUsers() {

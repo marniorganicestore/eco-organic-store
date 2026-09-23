@@ -149,7 +149,8 @@ export const api = {
   get: <T>(path: string) => apiRequest<T>(path),
   post: <T>(path: string, body?: unknown, includeAuth = true) =>
     apiRequest<T>(path, { method: 'POST', body, includeAuth }),
-  patch: <T>(path: string, body: unknown) => apiRequest<T>(path, { method: 'PATCH', body })
+  patch: <T>(path: string, body: unknown) => apiRequest<T>(path, { method: 'PATCH', body }),
+  delete: <T>(path: string) => apiRequest<T>(path, { method: 'DELETE' })
 }
 
 export const authApi = {
@@ -183,6 +184,21 @@ export const authApi = {
   requestReset: (email: string) => api.post<MessageResponse>('/auth/request-reset', { email }, false),
   confirmReset: (token: string, newPassword: string) =>
     api.post<MessageResponse>('/auth/confirm-reset', { token, newPassword }, false),
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    const auth = await apiRequest<AuthResponse>('/me/password', {
+      method: 'POST',
+      body: { currentPassword, newPassword }
+    })
+    const current = useAuthStore.getState().user
+    useAuthStore.getState().setAccessToken(auth.accessToken)
+    useAuthStore.getState().setUser(mapAuthUser({
+      userId: auth.userId,
+      email: auth.email,
+      name: auth.name,
+      roles: auth.roles,
+      avatar: auth.avatar ?? current?.avatar ?? null
+    }))
+  },
   me: async (): Promise<AuthUser> => {
     const profile = await api.get<AuthUser>('/me')
     const user = mapAuthUser(profile)

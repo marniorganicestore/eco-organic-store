@@ -1,0 +1,162 @@
+package com.harvest.identity.service;
+
+import com.harvest.identity.domain.Address;
+import com.harvest.identity.domain.User;
+import com.harvest.identity.repo.UserRepository;
+import com.harvest.identity.web.ProfileDtos.AddressRequest;
+import com.harvest.identity.web.ProfileDtos.UpdateProfileRequest;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+class ProfileServiceTest {
+    @Test
+    void updateChangesProfileFieldsWithoutDroppingAddresses() {
+        User user = user();
+        user.setAddresses(new ArrayList<>(List.of(saved("addr-1", true))));
+        ProfileService service = service(user);
+
+        User updated = service.update("u1", new UpdateProfileRequest("Asha Rao", "https://cdn.harvest.test/a.png", "9876543210"));
+
+        assertEquals("Asha Rao", updated.getName());
+        assertEquals("https://cdn.harvest.test/a.png", updated.getAvatar());
+        assertEquals("9876543210", updated.getPhone());
+        assertEquals(1, updated.getAddresses().size());
+        assertEquals("addr-1", updated.getAddresses().get(0).getId());
+    }
+
+    @Test
+    void updateRejectsBlankNameAndUnsafeAvatar() {
+        ProfileService service = service(user());
+
+        assertEquals(
+                "Name must be 2–80 characters.",
+                assertThrows(IllegalArgumentException.class, () -> service.update("u1", new UpdateProfileRequest("  ", null, null)))
+                        .getMessage());
+        assertEquals(
+                "Avatar must be an http(s) link.",
+                assertThrows(IllegalArgumentException.class, () -> service.update("u1", new UpdateProfileRequest(null, "javascript:alert(1)", null)))
+                        .getMessage());
+    }
+
+    @Test
+    void blankAvatarAndPhoneClearThoseFields() {
+        User user = user();
+        user.setAvatar("https://cdn.harvest.test/a.png");
+        user.setPhone("9876543210");
+        ProfileService service = service(user);
+
+        User updated = service.update("u1", new UpdateProfileRequest(null, "  ", "  "));
+
+        assertNull(updated.getAvatar());
+        assertNull(updated.getPhone());
+        assertEquals("Asha", updated.getName());
+    }
+
+    @Test
+    void firstAddressIsDefaultAndALaterDefaultReplacesIt() {
+        ProfileService service = service(user());
+
+        User withHome = service.addAddress("u1", address("Home", false));
+        assertTrue(withHome.getAddresses().get(0).isDefaultAddress());
+
+        User withWork = service.addAddress("u1", address("Work", true));
+        Address home = find(withWork, "Home");
+        Address work = find(withWork, "Work");
+        assertFalse(home.isDefaultAddress());
+        assertTrue(work.isDefaultAddress());
+    }
+
+    @Test
+    void deletingTheDefaultPromotesTheNextAddress() {
+        ProfileService service = service(user());
+        User withHome = service.addAddress("u1", address("Home", true));
+        String homeId = find(withHome, "Home").getId();
+        service.addAddress("u1", address("Work", false));
+
+        User remaining = service.deleteAddress("u1", homeId);
+
+        assertEquals(1, remaining.getAddresses().size());
+        assertEquals("Work", remaining.getAddresses().get(0).getLabel());
+        assertTrue(remaining.getAddresses().get(0).isDefaultAddress());
+    }
+
+    @Test
+    void rejectsANinthAddressAndAnUnknownState() {
+        User user = user();
+        ArrayList<Address> existing = new ArrayList<>();
+        for (int i = 0; i < ProfileService.MAX_ADDRESSES; i++) {
+            existing.add(saved("addr-" + i, i == 0));
+        }
+        user.setAddresses(existing);
+        ProfileService service = service(user);
+
+        assertEquals(
+                "You can save up to 8 delivery addresses.",
+                assertThrows(IllegalArgumentException.class, () -> service.addAddress("u1", address("Extra", false))).getMessage());
+
+        user.setAddresses(new ArrayList<>());
+        AddressRequest invalid = new AddressRequest(
+                "Home", "Asha Rao", "12 Orchard Lane", "", "Pune", "Narnia", "411001", "", false);
+        assertEquals(
+                "Choose a state or union territory.",
+                assertThrows(IllegalArgumentException.class, () -> service.addAddress("u1", invalid)).getMessage());
+    }
+
+    @Test
+    void repairsMultipleDefaultsOnRead() {
+        User user = user();
+        user.setAddresses(List.of(saved("a", true), saved("b", true)));
+        ProfileService service = service(user);
+
+        User loaded = service.get("u1");
+
+        assertTrue(loaded.getAddresses().get(0).isDefaultAddress());
+        assertFalse(loaded.getAddresses().get(1).isDefaultAddress());
+    }
+
+    private static ProfileService service(User user) {
+        UserRepository repository = mock(UserRepository.class);
+        when(repository.findById("u1")).thenReturn(Optional.of(user));
+        when(repository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        return new ProfileService(repository);
+    }
+
+    private static User user() {
+        User user = new User();
+        user.setId("u1");
+        user.setEmail("asha@harvest.co");
+        user.setName("Asha");
+        user.setRoles(List.of("CUSTOMER"));
+        return user;
+    }
+
+    private static AddressRequest address(String label, boolean defaultAddress) {
+        return new AddressRequest(label, "Asha Rao", "12 Orchard Lane", "", "Pune", "Maharashtra", "411001", "9876543210", defaultAddress);
+    }
+
+    private static Address saved(String id, boolean defaultAddress) {
+        Address address = new Address();
+        address.setId(id);
+        address.setLabel(id);
+        address.setDefaultAddress(defaultAddress);
+        return address;
+    }
+
+    private static Address find(User user, String label) {
+        return user.getAddresses().stream()
+                .filter(address -> label.equals(address.getLabel()))
+                .findFirst()
+                .orElseThrow();
+    }
+}

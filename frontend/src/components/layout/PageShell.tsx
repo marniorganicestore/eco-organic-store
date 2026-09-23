@@ -10,9 +10,9 @@ type PageShellProps = {
 export const harvestCard =
   'rounded-2xl border border-white/70 bg-[#f8f6f1]/95 shadow-[0_18px_50px_rgba(6,46,28,0.12)] backdrop-blur-md'
 export const harvestBtn =
-  'rounded-lg bg-emerald-700 px-4 py-2.5 font-medium text-white shadow-sm hover:bg-emerald-800 disabled:opacity-40'
+  'rounded-lg bg-emerald-700 px-4 py-2.5 font-medium text-white shadow-sm outline-none hover:bg-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:opacity-40'
 export const harvestBtnGhost =
-  'rounded-lg border border-emerald-700/70 px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-50'
+  'rounded-lg border border-emerald-700/70 px-3 py-1.5 text-sm font-medium text-emerald-900 outline-none hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-700'
 export const harvestInput =
   'w-full rounded-lg border border-emerald-100 bg-white/85 p-2.5 outline-none focus:ring-2 focus:ring-emerald-700'
 
