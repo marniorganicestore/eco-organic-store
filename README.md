@@ -1,8 +1,8 @@
 # Eco Organic Store (Microservices)
 
-[![CI](https://github.com/dmarni/harvest-co/actions/workflows/ci.yml/badge.svg)](https://github.com/dmarni/harvest-co/actions/workflows/ci.yml)
-[![Azure](https://github.com/dmarni/harvest-co/actions/workflows/azure.yml/badge.svg)](https://github.com/dmarni/harvest-co/actions/workflows/azure.yml)
-[![Docker](https://github.com/dmarni/harvest-co/actions/workflows/docker.yml/badge.svg)](https://github.com/dmarni/harvest-co/actions/workflows/docker.yml)
+[![CI](https://github.com/marniorganicestore/eco-organic-store/actions/workflows/ci.yml/badge.svg)](https://github.com/marniorganicestore/eco-organic-store/actions/workflows/ci.yml)
+[![Azure](https://github.com/marniorganicestore/eco-organic-store/actions/workflows/azure.yml/badge.svg)](https://github.com/marniorganicestore/eco-organic-store/actions/workflows/azure.yml)
+[![Docker](https://github.com/marniorganicestore/eco-organic-store/actions/workflows/docker.yml/badge.svg)](https://github.com/marniorganicestore/eco-organic-store/actions/workflows/docker.yml)
 
 Full-stack organic e-store built with Spring Boot 4.1 microservices, MongoDB, and React 19.
 
