@@ -20,7 +20,7 @@ import SecurityPage from './pages/account/SecurityPage'
 import OrdersPage from './pages/account/OrdersPage'
 import { firstName, isAdmin } from './lib/userDisplay'
 import { AdminUsersPanel } from './components/admin/AdminUsersPanel'
-import { harvestBtn, harvestBtnGhost, harvestCard, harvestInput, PageShell } from './components/layout/PageShell'
+import { storeBtn, storeBtnGhost, storeCard, storeInput, PageShell } from './components/layout/PageShell'
 
 type Product = {
   id: string
@@ -74,7 +74,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       ) : (
         <>
           <img
-            src="/images/home-harvest.png"
+            src="/images/home-hero.png"
             alt=""
             aria-hidden="true"
             className="fixed inset-0 -z-20 h-full w-full object-cover"
@@ -84,7 +84,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       )}
       <header className="sticky top-0 z-20 border-b border-white/25 bg-[#f8f6f1]/78 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
-          <Link to="/" className="text-2xl font-semibold text-emerald-900">Harvest & Co.</Link>
+          <Link to="/" className="text-2xl font-semibold text-emerald-900">Eco Organic Store</Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link className={navClass('/shop')} to="/shop">Shop</Link>
             <Link className={navClass('/account/orders')} to="/account/orders">Orders</Link>
@@ -107,14 +107,14 @@ function Layout({ children }: { children: React.ReactNode }) {
                 ) : null}
                 <button
                   type="button"
-                  className={harvestBtnGhost}
+                  className={storeBtnGhost}
                   onClick={logout}
                 >
                   Logout
                 </button>
               </div>
             ) : (
-              <Link to="/login" className={`${harvestBtn} px-3 py-1.5`}>
+              <Link to="/login" className={`${storeBtn} px-3 py-1.5`}>
                 Login
               </Link>
             )}
@@ -201,7 +201,7 @@ function Shop() {
       subtitle="Seasonal organic produce and pantry staples from trusted farms."
       actions={(
         <select
-          className={`${harvestInput} w-56`}
+          className={`${storeInput} w-56`}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           aria-label="Filter by category"
@@ -217,7 +217,7 @@ function Shop() {
         </div>
       ) : null}
       {products.length === 0 && !loadError ? (
-        <p className={`${harvestCard} p-8 text-sm text-slate-600`}>No products in this category yet.</p>
+        <p className={`${storeCard} p-8 text-sm text-slate-600`}>No products in this category yet.</p>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((p) => <ProductCard key={p.id} p={p} />)}
@@ -234,14 +234,14 @@ function ProductCard({ p }: { p: Product }) {
     setItems(cart.items)
   }
   return (
-    <article className={`${harvestCard} overflow-hidden p-4`}>
+    <article className={`${storeCard} overflow-hidden p-4`}>
       <Link to={`/product/${p.slug}`}>
         <img className="mb-3 h-44 w-full rounded-xl object-cover" src={p.images?.[0]} alt={p.name} />
         <h3 className="font-medium text-emerald-950">{p.name}</h3>
       </Link>
       <p className="text-sm text-slate-500">{p.unit} • {p.origin}</p>
       <p className="mt-1 font-semibold text-emerald-900">₹{(p.pricePaise / 100).toFixed(2)}</p>
-      <button type="button" onClick={add} className={`${harvestBtn} mt-3 w-full`}>Add to cart</button>
+      <button type="button" onClick={add} className={`${storeBtn} mt-3 w-full`}>Add to cart</button>
     </article>
   )
 }
@@ -269,12 +269,12 @@ function ProductPage() {
     <PageShell title={product.name} subtitle={`${product.unit} • ${product.origin}`}>
       <section className="grid gap-8 md:grid-cols-2">
         <img src={product.images?.[0]} alt={product.name} className="h-96 w-full rounded-2xl object-cover shadow-lg" />
-        <div className={`${harvestCard} p-6`}>
+        <div className={`${storeCard} p-6`}>
           <p className="text-slate-600">{product.description}</p>
           <p className="my-4 text-2xl font-semibold text-emerald-950">₹{(product.pricePaise / 100).toFixed(2)}</p>
-          <button type="button" onClick={add} className={`${harvestBtn} w-full`}>Add to cart</button>
+          <button type="button" onClick={add} className={`${storeBtn} w-full`}>Add to cart</button>
         </div>
-        <div className={`${harvestCard} p-6 md:col-span-2`}>
+        <div className={`${storeCard} p-6 md:col-span-2`}>
           <h3 className="mb-3 text-lg font-semibold text-emerald-950">Reviews</h3>
           {reviews.length === 0
             ? <p className="text-sm text-slate-500">No reviews yet.</p>
@@ -295,8 +295,8 @@ function CartPage() {
   const totalItems = useMemo(() => items.reduce((sum, i) => sum + i.qty, 0), [items])
 
   return (
-    <PageShell title="Cart" subtitle="Review your harvest before checkout.">
-      <div className={`${harvestCard} p-6`}>
+    <PageShell title="Cart" subtitle="Review your basket before checkout.">
+      <div className={`${storeCard} p-6`}>
         {items.length === 0 ? <p className="text-slate-500">Your cart is empty.</p> : null}
         <ul className="space-y-3">
           {items.map((i) => (
@@ -307,7 +307,7 @@ function CartPage() {
         </ul>
         <button
           disabled={!totalItems}
-          className={`${harvestBtn} mt-5`}
+          className={`${storeBtn} mt-5`}
           onClick={() => navigate('/checkout')}
         >
           Proceed to checkout
@@ -339,8 +339,8 @@ function CheckoutPage() {
   }
 
   return (
-    <PageShell title="Checkout" subtitle="Where should we send this harvest?">
-      <div className={`${harvestCard} max-w-xl space-y-4 p-6`}>
+    <PageShell title="Checkout" subtitle="Where should we send this order?">
+      <div className={`${storeCard} max-w-xl space-y-4 p-6`}>
         {error ? <FormBanner tone="error">{error}</FormBanner> : null}
         <ShippingAddressPicker
           loading={address.loading}
@@ -351,7 +351,7 @@ function CheckoutPage() {
           onSelect={address.select}
           onCustomChange={address.setCustomValue}
         />
-        <button className={`${harvestBtn} w-full`} type="button" disabled={pending || address.loading} aria-busy={pending} onClick={pay}>
+        <button className={`${storeBtn} w-full`} type="button" disabled={pending || address.loading} aria-busy={pending} onClick={pay}>
           {pending ? 'Starting payment...' : 'Continue to payment'}
         </button>
       </div>
@@ -362,8 +362,8 @@ function CheckoutPage() {
 function OrderSuccess() {
   return (
     <PageShell title="Thank you">
-      <div className={`${harvestCard} p-8 text-emerald-950`}>
-        Order payment completed. Thank you for choosing Harvest &amp; Co.
+      <div className={`${storeCard} p-8 text-emerald-950`}>
+        Order payment completed. Thank you for choosing Eco Organic Store.
       </div>
     </PageShell>
   )
@@ -404,42 +404,42 @@ function Admin() {
     <PageShell title="Admin" subtitle="Inventory, payments, orders, and reviews.">
       <div className="grid gap-4 md:grid-cols-2">
         <AdminUsersPanel />
-        <section className={`${harvestCard} p-4`}>
+        <section className={`${storeCard} p-4`}>
           <h3 className="mb-2 font-semibold text-emerald-950">Low stock</h3>
           {lowStock.map((s) => <p key={s.productId}>{s.productId}: {s.available}</p>)}
         </section>
-        <section className={`${harvestCard} p-4`}>
+        <section className={`${storeCard} p-4`}>
           <h3 className="mb-2 font-semibold text-emerald-950">Payments</h3>
           {payments.map((p) => <p key={p.id}>{p.orderNumber}: {p.status}</p>)}
         </section>
-        <section className={`${harvestCard} p-4 md:col-span-2`}>
+        <section className={`${storeCard} p-4 md:col-span-2`}>
           <h3 className="mb-2 font-semibold text-emerald-950">Products and inventory</h3>
           {products.map((p) => (
             <div key={p.id} className="mb-2 flex items-center gap-2 rounded-xl border border-emerald-100 bg-white/70 p-2">
               <span className="min-w-60 text-sm">{p.name}</span>
-              <input type="number" className={`${harvestInput} w-24`} placeholder="on hand" onChange={(e) => setAdjustQty((prev) => ({ ...prev, [p.id]: Number(e.target.value) }))} />
-              <button className={harvestBtn} onClick={() => adjustStock(p.id)}>Update stock</button>
+              <input type="number" className={`${storeInput} w-24`} placeholder="on hand" onChange={(e) => setAdjustQty((prev) => ({ ...prev, [p.id]: Number(e.target.value) }))} />
+              <button className={storeBtn} onClick={() => adjustStock(p.id)}>Update stock</button>
             </div>
           ))}
         </section>
-        <section className={`${harvestCard} p-4 md:col-span-2`}>
+        <section className={`${storeCard} p-4 md:col-span-2`}>
           <h3 className="mb-2 font-semibold text-emerald-950">Orders</h3>
           {orders.map((o) => (
             <div key={o.id} className="mb-2 flex items-center gap-2 rounded-xl border border-emerald-100 bg-white/70 p-2">
               <span className="min-w-56 text-sm">{o.orderNumber}</span>
               <span className="min-w-32 text-sm">{o.orderStatus}</span>
-              <button className={harvestBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'PACKED')}>Pack</button>
-              <button className={harvestBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'SHIPPED')}>Ship</button>
-              <button className={harvestBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'DELIVERED')}>Deliver</button>
+              <button className={storeBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'PACKED')}>Pack</button>
+              <button className={storeBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'SHIPPED')}>Ship</button>
+              <button className={storeBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'DELIVERED')}>Deliver</button>
             </div>
           ))}
         </section>
-        <section className={`${harvestCard} p-4 md:col-span-2`}>
+        <section className={`${storeCard} p-4 md:col-span-2`}>
           <h3 className="mb-2 font-semibold text-emerald-950">Hidden reviews</h3>
           {hiddenReviews.length === 0 ? <p className="text-sm text-slate-500">No hidden reviews.</p> : hiddenReviews.map((r) => (
             <div key={r.id} className="mb-2 flex items-center justify-between rounded-xl border border-emerald-100 bg-white/70 p-2">
               <p>{r.productId}: {r.body}</p>
-              <button className={harvestBtn} onClick={() => reviewVisible(r.id)}>Make visible</button>
+              <button className={storeBtn} onClick={() => reviewVisible(r.id)}>Make visible</button>
             </div>
           ))}
         </section>

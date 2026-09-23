@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 FROM eclipse-temurin:21-jre-noble AS runtime
 WORKDIR /app
 ARG MODULE
-RUN groupadd --system harvest && useradd --system --gid harvest --no-create-home harvest
+RUN groupadd --system store && useradd --system --gid store --no-create-home store
 COPY --from=maven /out/${MODULE}.jar app.jar
-USER harvest
+USER store
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -7,15 +7,15 @@ import { useAuthStore } from '../../store/authStore'
 const accounts = [
   {
     userId: 'admin-1',
-    email: 'admin@harvest.co',
-    name: 'Harvest Admin',
+    email: 'admin@eco-organic-store.com',
+    name: 'Store Admin',
     avatar: null,
     roles: ['CUSTOMER', 'ADMIN'],
     enabled: true
   },
   {
     userId: 'u2',
-    email: 'ada@harvest.co',
+    email: 'ada@eco-organic-store.com',
     name: 'Ada Lovelace',
     avatar: null,
     roles: ['CUSTOMER'],
@@ -42,8 +42,8 @@ describe('AdminUsersPanel', () => {
   it('grants admin without letting the signed-in admin demote themselves', async () => {
     useAuthStore.getState().setSession('token', {
       userId: 'admin-1',
-      email: 'admin@harvest.co',
-      name: 'Harvest Admin',
+      email: 'admin@eco-organic-store.com',
+      name: 'Store Admin',
       roles: ['CUSTOMER', 'ADMIN']
     })
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {

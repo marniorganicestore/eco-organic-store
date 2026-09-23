@@ -7,13 +7,13 @@ type PageShellProps = {
   children: ReactNode
 }
 
-export const harvestCard =
+export const storeCard =
   'rounded-2xl border border-white/70 bg-[#f8f6f1]/95 shadow-[0_18px_50px_rgba(6,46,28,0.12)] backdrop-blur-md'
-export const harvestBtn =
+export const storeBtn =
   'rounded-lg bg-emerald-700 px-4 py-2.5 font-medium text-white shadow-sm outline-none hover:bg-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:opacity-40'
-export const harvestBtnGhost =
+export const storeBtnGhost =
   'rounded-lg border border-emerald-700/70 px-3 py-1.5 text-sm font-medium text-emerald-900 outline-none hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-700'
-export const harvestInput =
+export const storeInput =
   'w-full rounded-lg border border-emerald-100 bg-white/85 p-2.5 outline-none focus:ring-2 focus:ring-emerald-700'
 
 export function PageShell({ title, subtitle, actions, children }: PageShellProps) {
@@ -21,7 +21,7 @@ export function PageShell({ title, subtitle, actions, children }: PageShellProps
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-emerald-800/80">Harvest &amp; Co.</p>
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-emerald-800/80">Eco Organic Store</p>
           <h1 className="mt-1 text-3xl font-semibold text-emerald-950">{title}</h1>
           {subtitle ? <p className="mt-1 max-w-xl text-sm text-slate-600">{subtitle}</p> : null}
         </div>

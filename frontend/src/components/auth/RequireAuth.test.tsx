@@ -36,7 +36,7 @@ describe('route guards', () => {
   it('redirects non-admin users from admin pages', () => {
     useAuthStore.getState().setSession('token', {
       userId: 'u1',
-      email: 'user@harvest.co',
+      email: 'user@eco-organic-store.com',
       name: 'User',
       roles: ['CUSTOMER']
     })

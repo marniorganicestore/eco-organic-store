@@ -1,5 +1,5 @@
 variable "REGISTRY" {
-  default = "harvest-co"
+  default = "eco-organic-store"
 }
 
 variable "TAG" {

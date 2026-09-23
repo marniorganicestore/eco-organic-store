@@ -19,8 +19,8 @@ type AuthState = {
   clearSession: () => void
 }
 
-const TOKEN_KEY = 'harvest.accessToken'
-const USER_KEY = 'harvest.user'
+const TOKEN_KEY = 'eco.accessToken'
+const USER_KEY = 'eco.user'
 
 function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null

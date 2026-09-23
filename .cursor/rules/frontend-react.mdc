@@ -1,5 +1,5 @@
 ---
-description: React 19, Vite, TanStack Query, and Zustand conventions for the Harvest storefront
+description: React 19, Vite, TanStack Query, and Zustand conventions for the Eco Organic Store storefront
 globs:
   - "frontend/src/**/*.ts"
   - "frontend/src/**/*.tsx"

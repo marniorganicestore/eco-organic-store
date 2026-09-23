@@ -198,7 +198,7 @@ jobs:
       - name: Summary
         run: |
           {
-            echo "## Harvest Azure"
+            echo "## Eco Organic Store Azure"
             echo "- Storefront: ${STOREFRONT_URL}"
             echo "- Gateway: ${GATEWAY_URL}"
             echo "- Attach custom domains (see infra/azure/README.md) before treating login as production."

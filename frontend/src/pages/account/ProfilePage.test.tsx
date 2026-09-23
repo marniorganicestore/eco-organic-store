@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/authStore'
 
 const profile = {
   userId: 'u1',
-  email: 'asha@harvest.co',
+  email: 'asha@eco-organic-store.com',
   name: 'Asha Rao',
   avatar: null,
   phone: '9876543210',
@@ -38,7 +38,7 @@ describe('ProfilePage', () => {
   it('shows the account and blocks a too-short name before saving', async () => {
     useAuthStore.getState().setSession('token', {
       userId: 'u1',
-      email: 'asha@harvest.co',
+      email: 'asha@eco-organic-store.com',
       name: 'Asha Rao',
       roles: ['CUSTOMER'],
       avatar: null

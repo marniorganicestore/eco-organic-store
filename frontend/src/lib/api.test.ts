@@ -11,8 +11,8 @@ describe('resolveApiBase', () => {
 
   it('keeps an explicit /api prefix and appends it to a host', () => {
     expect(resolveApiBase('/api')).toBe('/api')
-    expect(resolveApiBase('https://api.harvest.test/api/')).toBe('https://api.harvest.test/api')
-    expect(resolveApiBase('https://api.harvest.test')).toBe('https://api.harvest.test/api')
+    expect(resolveApiBase('https://api.example.test/api/')).toBe('https://api.example.test/api')
+    expect(resolveApiBase('https://api.example.test')).toBe('https://api.example.test/api')
   })
 })
 
@@ -21,8 +21,8 @@ describe('joinApiPath', () => {
     expect(joinApiPath('/auth/register')).toBe('/api/auth/register')
     expect(joinApiPath('/auth/register', '/api')).toBe('/api/auth/register')
     expect(joinApiPath('auth/login', '/api')).toBe('/api/auth/login')
-    expect(joinApiPath('/auth/register', 'https://api.harvest.test/api')).toBe(
-      'https://api.harvest.test/api/auth/register'
+    expect(joinApiPath('/auth/register', 'https://api.example.test/api')).toBe(
+      'https://api.example.test/api/auth/register'
     )
   })
 })
@@ -32,7 +32,7 @@ describe('authApi.logout', () => {
     localStorage.clear()
     useAuthStore.getState().setSession('access-token', {
       userId: 'u1',
-      email: 'user@harvest.co',
+      email: 'user@eco-organic-store.com',
       name: 'User',
       roles: ['CUSTOMER']
     })
@@ -57,7 +57,7 @@ describe('authApi.logout', () => {
     expect(new Headers(init.headers).get('Authorization')).toBe('Bearer access-token')
     expect(useAuthStore.getState().accessToken).toBeNull()
     expect(useAuthStore.getState().user).toBeNull()
-    expect(localStorage.getItem('harvest.accessToken')).toBeNull()
+    expect(localStorage.getItem('eco.accessToken')).toBeNull()
   })
 
   it('clears the session even when logout fails and does not attempt refresh', async () => {
@@ -72,7 +72,7 @@ describe('authApi.logout', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/auth/logout')
     expect(useAuthStore.getState().accessToken).toBeNull()
-    expect(localStorage.getItem('harvest.user')).toBeNull()
+    expect(localStorage.getItem('eco.user')).toBeNull()
   })
 })
 
@@ -93,7 +93,7 @@ describe('authApi.login', () => {
         return new Response(JSON.stringify({
           accessToken: 'jwt',
           userId: 'u1',
-          email: 'user@harvest.co',
+          email: 'user@eco-organic-store.com',
           name: 'User',
           roles: ['CUSTOMER'],
           avatar: null
@@ -109,9 +109,9 @@ describe('authApi.login', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const user = await authApi.login({ email: 'user@harvest.co', password: 'secret123' })
+    const user = await authApi.login({ email: 'user@eco-organic-store.com', password: 'secret123' })
 
-    expect(user.email).toBe('user@harvest.co')
+    expect(user.email).toBe('user@eco-organic-store.com')
     expect(useAuthStore.getState().accessToken).toBe('jwt')
     expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
       '/api/auth/login',
@@ -126,7 +126,7 @@ describe('authApi.login', () => {
     }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(authApi.login({ email: 'user@harvest.co', password: 'nope' })).rejects.toMatchObject({
+    await expect(authApi.login({ email: 'user@eco-organic-store.com', password: 'nope' })).rejects.toMatchObject({
       status: 401,
       message: 'Invalid email or password'
     })

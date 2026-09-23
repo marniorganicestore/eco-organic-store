@@ -1,5 +1,5 @@
 ---
-description: Java 21 and Spring Boot 4 conventions for Harvest services
+description: Java 21 and Spring Boot 4 conventions for Eco Organic Store services
 globs: "**/*.java"
 alwaysApply: false
 ---

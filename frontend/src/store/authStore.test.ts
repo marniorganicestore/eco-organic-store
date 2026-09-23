@@ -11,19 +11,19 @@ describe('authStore', () => {
   it('stores and clears session data', () => {
     useAuthStore.getState().setSession('token-1', {
       userId: 'u1',
-      email: 'user@harvest.co',
+      email: 'user@eco-organic-store.com',
       name: 'User',
       roles: ['CUSTOMER']
     })
 
     expect(useAuthStore.getState().accessToken).toBe('token-1')
-    expect(useAuthStore.getState().user?.email).toBe('user@harvest.co')
-    expect(localStorage.getItem('harvest.accessToken')).toBe('token-1')
+    expect(useAuthStore.getState().user?.email).toBe('user@eco-organic-store.com')
+    expect(localStorage.getItem('eco.accessToken')).toBe('token-1')
 
     useAuthStore.getState().clearSession()
 
     expect(useAuthStore.getState().accessToken).toBeNull()
     expect(useAuthStore.getState().user).toBeNull()
-    expect(localStorage.getItem('harvest.accessToken')).toBeNull()
+    expect(localStorage.getItem('eco.accessToken')).toBeNull()
   })
 })

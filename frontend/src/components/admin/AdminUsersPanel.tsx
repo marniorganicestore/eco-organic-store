@@ -3,7 +3,7 @@ import { ApiError } from '../../lib/api'
 import { ADMIN_ROLE, CUSTOMER_ROLE, isAdmin, roleLabel } from '../../lib/userDisplay'
 import { useAuthStore } from '../../store/authStore'
 import { useAdminAccounts, useUpdateAccountAccess } from '../../hooks/useAdminUsers'
-import { harvestBtnGhost, harvestCard } from '../layout/PageShell'
+import { storeBtnGhost, storeCard } from '../layout/PageShell'
 import { FormBanner } from '../account/FormBanner'
 import { UserAvatar } from '../account/UserAvatar'
 
@@ -37,7 +37,7 @@ export function AdminUsersPanel() {
   }
 
   return (
-    <section className={`${harvestCard} p-4 md:col-span-2`}>
+    <section className={`${storeCard} p-4 md:col-span-2`}>
       <h3 className="font-semibold text-emerald-950">People</h3>
       <p className="mt-1 max-w-2xl text-sm text-slate-600">
         Registration always creates a customer. Grant admin here when someone should run the store. Admins can still shop.
@@ -105,7 +105,7 @@ export function AdminUsersPanel() {
                     </div>
                     <button
                       type="button"
-                      className={harvestBtnGhost}
+                      className={storeBtnGhost}
                       disabled={pending || (self && account.enabled)}
                       title={self && account.enabled ? 'You cannot disable your own account.' : undefined}
                       onClick={() => changeStatus(account.userId, !account.enabled)}

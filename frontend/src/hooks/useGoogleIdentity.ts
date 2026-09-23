@@ -8,7 +8,7 @@ function loadGoogleIdentity(): Promise<void> {
   if (window.google?.accounts?.id) return Promise.resolve()
   if (!gisLoader) {
     gisLoader = new Promise((resolve, reject) => {
-      const existing = document.querySelector<HTMLScriptElement>('script[data-harvest-gis]')
+      const existing = document.querySelector<HTMLScriptElement>('script[data-store-gis]')
       if (existing) {
         existing.addEventListener('load', () => resolve(), { once: true })
         existing.addEventListener('error', () => reject(new Error('Unable to load Google sign-in')), { once: true })
@@ -17,7 +17,7 @@ function loadGoogleIdentity(): Promise<void> {
       const script = document.createElement('script')
       script.src = GIS_SCRIPT
       script.async = true
-      script.dataset.harvestGis = 'true'
+      script.dataset.storeGis = 'true'
       script.onload = () => resolve()
       script.onerror = () => reject(new Error('Unable to load Google sign-in'))
       document.head.appendChild(script)

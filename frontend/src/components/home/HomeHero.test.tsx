@@ -10,7 +10,7 @@ describe('HomeHero', () => {
     useAuthStore.getState().setBootstrapped(true)
   })
 
-  it('renders the harvest scene and shop call to action', () => {
+  it('renders the hero scene and shop call to action', () => {
     render(
       <MemoryRouter>
         <HomeHero />
@@ -20,6 +20,6 @@ describe('HomeHero', () => {
     expect(screen.getByRole('heading', { name: /Organic food, directly from trusted farms/i })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Shop now' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeTruthy()
-    expect(document.querySelector('img[src="/images/home-harvest.png"]')).toBeTruthy()
+    expect(document.querySelector('img[src="/images/home-hero.png"]')).toBeTruthy()
   })
 })

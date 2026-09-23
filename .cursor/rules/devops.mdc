@@ -1,5 +1,5 @@
 ---
-description: Docker Compose, GitHub Actions CI, and container conventions for Harvest
+description: Docker Compose, GitHub Actions CI, and container conventions for Eco Organic Store
 globs:
   - "docker-compose.yml"
   - "Dockerfile"

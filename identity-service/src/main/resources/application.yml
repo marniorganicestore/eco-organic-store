@@ -16,8 +16,8 @@ app:
   google:
     client-id: ${GOOGLE_CLIENT_ID:}
   admin:
-    email: ${ADMIN_EMAIL:admin@harvest.co}
-    name: ${ADMIN_NAME:Harvest Admin}
+    email: ${ADMIN_EMAIL:admin@eco-organic-store.com}
+    name: ${ADMIN_NAME:Store Admin}
     password: ${ADMIN_PASSWORD:}
     password-hash: ${ADMIN_PASSWORD_HASH:}
   cookie:

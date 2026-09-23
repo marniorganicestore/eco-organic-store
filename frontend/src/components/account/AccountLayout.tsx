@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { harvestCard } from '../layout/PageShell'
+import { storeCard } from '../layout/PageShell'
 
 const links = [
   { to: '/account', label: 'Profile', end: true },
@@ -11,7 +11,7 @@ const links = [
 export function AccountLayout() {
   return (
     <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-      <nav aria-label="Account" className={`${harvestCard} h-fit p-2`}>
+      <nav aria-label="Account" className={`${storeCard} h-fit p-2`}>
         <ul className="flex gap-1 overflow-x-auto lg:flex-col">
           {links.map((link) => (
             <li key={link.to}>
@@ -39,7 +39,7 @@ export function AccountLayout() {
 
 export function AccountSkeleton() {
   return (
-    <div className={`${harvestCard} animate-pulse space-y-3 p-6`} aria-hidden="true">
+    <div className={`${storeCard} animate-pulse space-y-3 p-6`} aria-hidden="true">
       <div className="h-16 w-16 rounded-full bg-emerald-100" />
       <div className="h-5 w-40 rounded bg-emerald-100" />
       <div className="h-4 w-64 rounded bg-emerald-50" />

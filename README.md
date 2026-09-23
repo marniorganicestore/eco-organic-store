@@ -1,4 +1,4 @@
-# Harvest & Co. Organic E-Store (Microservices)
+# Eco Organic Store (Microservices)
 
 [![CI](https://github.com/dmarni/harvest-co/actions/workflows/ci.yml/badge.svg)](https://github.com/dmarni/harvest-co/actions/workflows/ci.yml)
 [![Azure](https://github.com/dmarni/harvest-co/actions/workflows/azure.yml/badge.svg)](https://github.com/dmarni/harvest-co/actions/workflows/azure.yml)

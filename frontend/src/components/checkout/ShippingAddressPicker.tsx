@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { formatAddress, type Address } from '../../lib/profile'
-import { harvestCard, harvestInput } from '../layout/PageShell'
+import { storeCard, storeInput } from '../layout/PageShell'
 
 type ShippingAddressPickerProps = {
   loading: boolean
@@ -30,7 +30,7 @@ export function ShippingAddressPicker({
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-slate-800">Saved addresses</legend>
           {deliverable.map((address) => (
-            <label key={address.id} className={`${harvestCard} flex cursor-pointer gap-3 p-3 text-sm`}>
+            <label key={address.id} className={`${storeCard} flex cursor-pointer gap-3 p-3 text-sm`}>
               <input
                 type="radio"
                 name="saved-address"
@@ -47,7 +47,7 @@ export function ShippingAddressPicker({
               </span>
             </label>
           ))}
-          <label className={`${harvestCard} flex cursor-pointer gap-3 p-3 text-sm`}>
+          <label className={`${storeCard} flex cursor-pointer gap-3 p-3 text-sm`}>
             <input
               type="radio"
               name="saved-address"
@@ -72,7 +72,7 @@ export function ShippingAddressPicker({
           Shipping address
           <textarea
             id="shipping"
-            className={`${harvestInput} mt-1`}
+            className={`${storeInput} mt-1`}
             rows={4}
             value={customValue}
             autoComplete="street-address"

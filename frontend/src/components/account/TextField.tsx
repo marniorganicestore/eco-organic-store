@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes } from 'react'
-import { harvestInput } from '../layout/PageShell'
+import { storeInput } from '../layout/PageShell'
 
 type TextFieldProps = {
   id: string
@@ -33,7 +33,7 @@ export function TextField({
       <input
         id={id}
         name={id}
-        className={`${harvestInput} mt-1`}
+        className={`${storeInput} mt-1`}
         type={type}
         value={value}
         autoComplete={autoComplete}

@@ -40,7 +40,7 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(screen.getByRole('alert').textContent).toContain('Enter a valid email address.')
     expect(fetchMock).not.toHaveBeenCalled()
-    expect(document.querySelector('img[src="/images/login-harvest.png"]')).toBeTruthy()
+    expect(document.querySelector('img[src="/images/login-scene.png"]')).toBeTruthy()
   })
 
   it('signs in and returns to the requested page', async () => {
@@ -49,7 +49,7 @@ describe('LoginPage', () => {
         return new Response(JSON.stringify({
           accessToken: 'jwt',
           userId: 'u1',
-          email: 'user@harvest.co',
+          email: 'user@eco-organic-store.com',
           name: 'Asha Farmer',
           roles: ['CUSTOMER'],
           avatar: null
@@ -66,7 +66,7 @@ describe('LoginPage', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderLogin('/checkout')
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'user@harvest.co' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'user@eco-organic-store.com' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret123' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 
@@ -85,7 +85,7 @@ describe('LoginPage', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderLogin()
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'user@harvest.co' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'user@eco-organic-store.com' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrongpass' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 
@@ -106,8 +106,8 @@ describe('LoginPage', () => {
           return new Response(JSON.stringify({
             accessToken: 'jwt',
             userId: 'admin-1',
-            email: 'admin@harvest.co',
-            name: 'Harvest Admin',
+            email: 'admin@eco-organic-store.com',
+            name: 'Store Admin',
             roles: ['CUSTOMER', 'ADMIN'],
             avatar: null
           }), { status: 200, headers: { 'Content-Type': 'application/json' } })
@@ -120,7 +120,7 @@ describe('LoginPage', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderLogin()
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'admin@harvest.co' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'admin@eco-organic-store.com' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret123' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     expect(await screen.findByRole('alert')).toBeTruthy()

@@ -11,7 +11,7 @@ import {
   type AddressInput
 } from '../../lib/profile'
 import { useMakeDefaultAddress, useProfile, useRemoveAddress, useSaveAddress } from '../../hooks/useProfile'
-import { harvestBtn, harvestBtnGhost, harvestCard, harvestInput, PageShell } from '../../components/layout/PageShell'
+import { storeBtn, storeBtnGhost, storeCard, storeInput, PageShell } from '../../components/layout/PageShell'
 import { AccountSkeleton } from '../../components/account/AccountLayout'
 import { FormBanner } from '../../components/account/FormBanner'
 import { TextField } from '../../components/account/TextField'
@@ -116,14 +116,14 @@ export default function AddressesPage() {
           {error ? <FormBanner tone="error">{error}</FormBanner> : null}
           {saved ? <FormBanner tone="success">{saved}</FormBanner> : null}
           {addresses.length === 0 ? (
-            <section className={`${harvestCard} p-6`}>
+            <section className={`${storeCard} p-6`}>
               <h2 className="font-semibold text-emerald-950">No delivery addresses yet</h2>
               <p className="mt-1 text-sm text-slate-600">Add a home, work, or farm gate so checkout can fill itself in.</p>
             </section>
           ) : (
             <ul className="grid gap-3">
               {addresses.map((address) => (
-                <li key={address.id} className={`${harvestCard} p-4`}>
+                <li key={address.id} className={`${storeCard} p-4`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -138,21 +138,21 @@ export default function AddressesPage() {
                       <p className="mt-2 whitespace-pre-line text-sm text-slate-700">{formatAddress(address) || 'This saved note has no delivery details yet.'}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" className={harvestBtnGhost} onClick={() => edit(address)}>Edit</button>
+                      <button type="button" className={storeBtnGhost} onClick={() => edit(address)}>Edit</button>
                       {address.defaultAddress ? null : (
-                        <button type="button" className={harvestBtnGhost} disabled={makeDefault.isPending} onClick={() => markDefault(address.id)}>
+                        <button type="button" className={storeBtnGhost} disabled={makeDefault.isPending} onClick={() => markDefault(address.id)}>
                           Set as default
                         </button>
                       )}
                       {confirmRemoveId === address.id ? (
                         <>
-                          <button type="button" className={harvestBtnGhost} disabled={remove.isPending} onClick={() => removeAddress(address.id)}>
+                          <button type="button" className={storeBtnGhost} disabled={remove.isPending} onClick={() => removeAddress(address.id)}>
                             {remove.isPending ? 'Removing...' : 'Confirm remove'}
                           </button>
-                          <button type="button" className={harvestBtnGhost} onClick={() => setConfirmRemoveId(null)}>Keep</button>
+                          <button type="button" className={storeBtnGhost} onClick={() => setConfirmRemoveId(null)}>Keep</button>
                         </>
                       ) : (
-                        <button type="button" className={harvestBtnGhost} onClick={() => setConfirmRemoveId(address.id)}>Remove</button>
+                        <button type="button" className={storeBtnGhost} onClick={() => setConfirmRemoveId(address.id)}>Remove</button>
                       )}
                     </div>
                   </div>
@@ -160,14 +160,14 @@ export default function AddressesPage() {
               ))}
             </ul>
           )}
-          <form className={`${harvestCard} space-y-4 p-6`} onSubmit={submit} noValidate>
+          <form className={`${storeCard} space-y-4 p-6`} onSubmit={submit} noValidate>
             <h2 className="font-semibold text-emerald-950">{editingId ? 'Edit address' : 'New address'}</h2>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Address label">
               {['Home', 'Work', 'Farm'].map((label) => (
                 <button
                   key={label}
                   type="button"
-                  className={form.label === label ? harvestBtn : harvestBtnGhost}
+                  className={form.label === label ? storeBtn : storeBtnGhost}
                   onClick={() => setForm((current) => ({ ...current, label }))}
                 >
                   {label}
@@ -184,7 +184,7 @@ export default function AddressesPage() {
                 State or union territory
                 <select
                   id="address-state"
-                  className={`${harvestInput} mt-1`}
+                  className={`${storeInput} mt-1`}
                   value={form.state}
                   disabled={save.isPending}
                   onChange={(event) => setForm((current) => ({ ...current, state: event.target.value }))}
@@ -208,11 +208,11 @@ export default function AddressesPage() {
               Use as the default delivery address
             </label>
             <div className="flex flex-wrap gap-2">
-              <button className={harvestBtn} type="submit" disabled={save.isPending} aria-busy={save.isPending}>
+              <button className={storeBtn} type="submit" disabled={save.isPending} aria-busy={save.isPending}>
                 {save.isPending ? 'Saving...' : editingId ? 'Update address' : 'Save address'}
               </button>
               {editingId ? (
-                <button className={harvestBtnGhost} type="button" onClick={resetForm}>Cancel</button>
+                <button className={storeBtnGhost} type="button" onClick={resetForm}>Cancel</button>
               ) : null}
             </div>
           </form>

@@ -35,7 +35,7 @@ describe('RegisterPage', () => {
         return new Response(JSON.stringify({
           accessToken: 'jwt',
           userId: 'u1',
-          email: 'ada@harvest.co',
+          email: 'ada@eco-organic-store.com',
           name: 'Ada Lovelace',
           roles: ['CUSTOMER'],
           avatar: null
@@ -54,7 +54,7 @@ describe('RegisterPage', () => {
     expect(fetchMock).not.toHaveBeenCalled()
 
     fireEvent.change(screen.getByLabelText('Full name'), { target: { value: 'Ada Lovelace' } })
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@harvest.co' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@eco-organic-store.com' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret123' } })
     fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'different' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
@@ -66,7 +66,7 @@ describe('RegisterPage', () => {
 
     const registerCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('/auth/register'))
     const body = JSON.parse(String((registerCall?.[1] as RequestInit).body))
-    expect(body).toEqual({ name: 'Ada Lovelace', email: 'ada@harvest.co', password: 'secret123' })
+    expect(body).toEqual({ name: 'Ada Lovelace', email: 'ada@eco-organic-store.com', password: 'secret123' })
     expect(body.roles).toBeUndefined()
   })
 })

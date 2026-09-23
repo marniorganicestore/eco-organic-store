@@ -4,7 +4,7 @@ import { ApiError } from '../../lib/api'
 import { validateProfile } from '../../lib/profile'
 import { roleLabel } from '../../lib/userDisplay'
 import { useProfile, useUpdateProfile } from '../../hooks/useProfile'
-import { harvestBtn, harvestCard, PageShell } from '../../components/layout/PageShell'
+import { storeBtn, storeCard, PageShell } from '../../components/layout/PageShell'
 import { AccountSkeleton } from '../../components/account/AccountLayout'
 import { FormBanner } from '../../components/account/FormBanner'
 import { TextField } from '../../components/account/TextField'
@@ -48,14 +48,14 @@ export default function ProfilePage() {
   }
 
   return (
-    <PageShell title="Profile" subtitle="The name and phone we use on your harvest orders.">
+    <PageShell title="Profile" subtitle="The name and phone we use on your orders.">
       {profile.isPending ? <AccountSkeleton /> : null}
       {profile.isError ? (
         <FormBanner tone="error">Unable to load your profile. Refresh and try again.</FormBanner>
       ) : null}
       {profile.data ? (
         <div className="grid gap-4">
-          <section className={`${harvestCard} flex items-center gap-4 p-6`}>
+          <section className={`${storeCard} flex items-center gap-4 p-6`}>
             <UserAvatar name={profile.data.name || profile.data.email} avatar={avatar || profile.data.avatar} size="lg" />
             <div>
               <h2 className="text-xl font-semibold text-emerald-950">{profile.data.name}</h2>
@@ -72,7 +72,7 @@ export default function ProfilePage() {
               </ul>
             </div>
           </section>
-          <form className={`${harvestCard} space-y-4 p-6`} onSubmit={submit} noValidate>
+          <form className={`${storeCard} space-y-4 p-6`} onSubmit={submit} noValidate>
             {error ? <FormBanner tone="error">{error}</FormBanner> : null}
             {saved ? <FormBanner tone="success">Profile saved.</FormBanner> : null}
             <TextField id="profile-name" label="Name" value={name} autoComplete="name" disabled={update.isPending} onChange={setName} />
@@ -101,7 +101,7 @@ export default function ProfilePage() {
               disabled={update.isPending}
               onChange={setAvatar}
             />
-            <button className={`${harvestBtn} focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2`} type="submit" disabled={update.isPending} aria-busy={update.isPending}>
+            <button className={`${storeBtn} focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2`} type="submit" disabled={update.isPending} aria-busy={update.isPending}>
               {update.isPending ? 'Saving...' : 'Save profile'}
             </button>
           </form>

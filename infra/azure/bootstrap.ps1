@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-  One-time Azure + GitHub OIDC bootstrap for Harvest & Co.
+  One-time Azure + GitHub OIDC bootstrap for Eco Organic Store
 
 .DESCRIPTION
   Creates the resource group and an Entra app with a federated credential
@@ -27,7 +27,7 @@ $ErrorActionPreference = 'Stop'
 # Accept owner/repo or a github.com URL (with or without .git).
 $GitHubRepo = $GitHubRepo.Trim() -replace '^https?://github\.com/', '' -replace '\.git$', '' -replace '/+$', ''
 if ($GitHubRepo -notmatch '^[^/]+/[^/]+$') {
-    throw "GitHubRepo must be 'owner/repo' (example: marniorganicestore/harvest-co). Got: $GitHubRepo"
+    throw "GitHubRepo must be 'owner/repo' (example: owner/eco-organic-store). Got: $GitHubRepo"
 }
 
 az account set --subscription $SubscriptionId

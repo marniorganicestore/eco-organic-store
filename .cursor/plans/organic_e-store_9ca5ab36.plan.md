@@ -26,7 +26,7 @@ todos:
 isProject: false
 ---
 
-# Harvest &amp; Co. Organic E-Store
+# Eco Organic Store Organic E-Store
 
 Build a production-shaped **basic** organic grocery store: two folders in this workspace (`backend/`, `frontend/`), Docker Compose for MongoDB, Stripe Checkout, and JWT + Google sign-in.
 
@@ -81,7 +81,7 @@ Stock: decrement atomically on paid webhook (`findAndModify` with `stock >= qty`
 
 - Email/password register + login → **HS256 JWT** (access 15m + refresh 7d in httpOnly cookie, or both in JSON for SPA simplicity; prefer **access JWT in memory + refresh httpOnly cookie**)
 - Google: frontend Google Identity Services button → backend `POST /api/auth/google` verifies ID token against Google JWKS, upserts user, issues same JWT pair
-- Roles: `CUSTOMER` default; one seeded admin (`admin@harvest.co` from env)
+- Roles: `CUSTOMER` default; one seeded admin (`admin@eco-organic-store.com` from env)
 - Spring Security filter chain: public catalog/auth; authenticated cart/orders; `ADMIN` for `/api/admin/**`
 
 ## REST surface
@@ -122,7 +122,7 @@ Use Stripe test keys from `.env`. Success URL: `/order/success?session_id={CHECK
 
 ## Frontend UX (organic, not generic)
 
-Brand: **Harvest &amp; Co.** — cream paper background, forest/olive greens, terracotta accents, serif headlines + clean sans body. Large food photography, generous whitespace, sticky header with search + cart badge.
+Brand: **Eco Organic Store** — cream paper background, forest/olive greens, terracotta accents, serif headlines + clean sans body. Large food photography, generous whitespace, sticky header with search + cart badge.
 
 Customer routes:
 
@@ -145,7 +145,7 @@ Guest cart in `localStorage`; merge into server cart after login.
 
 ## Backend package sketch
 
-`com.harvest.estore` — `config` (Security, CORS, Mongo indexes, Stripe client), `auth`, `catalog`, `cart`, `order`, `admin`, `common` (error, pagination).
+`com.ecoorganicstore.estore` — `config` (Security, CORS, Mongo indexes, Stripe client), `auth`, `catalog`, `cart`, `order`, `admin`, `common` (error, pagination).
 
 Records for DTOs. Services transactional where needed. `CommandLineRunner` seed: ~12 organic SKUs across Produce, Pantry, Dairy, Beverages.
 

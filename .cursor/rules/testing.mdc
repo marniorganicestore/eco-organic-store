@@ -1,5 +1,5 @@
 ---
-description: Lean, high-value tests for Harvest services and the storefront
+description: Lean, high-value tests for Eco Organic Store services and the storefront
 globs:
   - "**/*Test.java"
   - "**/*Tests.java"

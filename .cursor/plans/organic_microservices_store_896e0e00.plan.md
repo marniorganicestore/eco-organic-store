@@ -1,6 +1,6 @@
 ---
 name: Organic Microservices Store
-overview: "Greenfield Harvest & Co. organic e-store: Maven multi-module Spring Boot 4.1 microservices behind Spring Cloud Gateway, MongoDB per service, Stripe payments, and a React 19.3 storefront plus admin dashboard with earthy, accessible UX."
+overview: "Greenfield Eco Organic Store organic e-store: Maven multi-module Spring Boot 4.1 microservices behind Spring Cloud Gateway, MongoDB per service, Stripe payments, and a React 19.3 storefront plus admin dashboard with earthy, accessible UX."
 todos:
   - id: scaffold
     content: Parent POM, common lib, docker-compose MongoDB, gateway JWT/CORS/internal-block, env examples, README
@@ -32,7 +32,7 @@ todos:
 isProject: false
 ---
 
-# Harvest & Co. Organic E-Store (Microservices)
+# Eco Organic Store Organic E-Store (Microservices)
 
 Build a production-shaped full store in this empty workspace: **Gateway + 7 domain services + React SPA**. One MongoDB container, **database-per-service**. Add Eureka/Config Server/Kafka in v1 — Docker Compose DNS + env URLs.
 
@@ -113,7 +113,7 @@ flowchart LR
 
 - Email/password register + login; access JWT 15m in memory; refresh 7d httpOnly cookie.
 - Google Identity Services → `POST /api/auth/google` verifies ID token (JWKS), upserts user, same JWT pair.
-- Roles: `CUSTOMER` default; seeded `ADMIN` from env (`admin@harvest.co`).
+- Roles: `CUSTOMER` default; seeded `ADMIN` from env (`admin@eco-organic-store.com`).
 
 ## Bounded contexts
 
@@ -183,7 +183,7 @@ Shop listing availability: catalog batches `GET /internal/stock?productIds=` (ci
 
 ## Frontend UX
 
-Brand **Harvest & Co.** — cream paper background, forest/olive greens, terracotta accents, serif headlines + clean sans body. Large produce photography (seed Unsplash URLs), generous whitespace, sticky header with search + cart badge.
+Brand **Eco Organic Store** — cream paper background, forest/olive greens, terracotta accents, serif headlines + clean sans body. Large produce photography (seed Unsplash URLs), generous whitespace, sticky header with search + cart badge.
 
 Customer routes: `/` hero + featured + category tiles + why-organic + testimonials; `/shop` filters/sort/search; `/product/:slug` gallery, origin, certifications, qty stepper, reviews; `/cart`; `/checkout` address then Stripe redirect; `/order/success`; `/account/orders`; `/login` `/register` (email + Google).
 

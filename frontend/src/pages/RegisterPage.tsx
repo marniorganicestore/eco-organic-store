@@ -97,7 +97,7 @@ export default function RegisterPage() {
     <AuthShell
       title="Create your account"
       subtitle="You will shop as a customer. Admin access is not chosen here."
-      asideTitle="Join Harvest & Co. as a customer."
+      asideTitle="Join Eco Organic Store as a customer."
       asideBody="Save your cart and follow organic orders. If you also run the store, an admin grants that access after you sign up."
     >
       {error ? (

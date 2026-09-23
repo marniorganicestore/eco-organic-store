@@ -1,5 +1,5 @@
 ---
-description: Bounded contexts, gateway routes, and REST contracts for Harvest microservices
+description: Bounded contexts, gateway routes, and REST contracts for Eco Organic Store microservices
 globs:
   - "**/*.java"
   - "**/application.yml"
