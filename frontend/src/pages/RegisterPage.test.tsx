@@ -30,7 +30,7 @@ describe('RegisterPage', () => {
   })
 
   it('checks the name, password, and confirmation before creating a customer', async () => {
-    const fetchMock = vi.fn(async (url: string) => {
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
       if (String(url).includes('/auth/register')) {
         return new Response(JSON.stringify({
           accessToken: 'jwt',
@@ -65,7 +65,7 @@ describe('RegisterPage', () => {
     expect(await screen.findByText('Shop Page')).toBeTruthy()
 
     const registerCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('/auth/register'))
-    const body = JSON.parse(String((registerCall?.[1] as RequestInit).body))
+    const body = JSON.parse(String(registerCall?.[1]?.body))
     expect(body).toEqual({ name: 'Ada Lovelace', email: 'ada@eco-organic-store.com', password: 'secret123' })
     expect(body.roles).toBeUndefined()
   })
