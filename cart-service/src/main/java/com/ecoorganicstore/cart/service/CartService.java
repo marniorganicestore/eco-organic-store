@@ -2,36 +2,107 @@ package com.ecoorganicstore.cart.service;
 
 import com.ecoorganicstore.cart.domain.Cart;
 import com.ecoorganicstore.cart.repo.CartRepository;
+import com.ecoorganicstore.cart.web.CartResponse;
+import com.ecoorganicstore.cart.web.InternalCartResponse;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 @Service
 public class CartService {
-    private final CartRepository cartRepository;
-    private final RestClient restClient;
-    private final String internalKey;
-    private final String catalogUrl;
-    private final String inventoryUrl;
+    public static final int MAX_QTY = 24;
 
-    public CartService(CartRepository cartRepository,
-                       RestClient restClient,
-                       @Value("${app.internal-key}") String internalKey,
-                       @Value("${services.catalog:http://localhost:8082}") String catalogUrl,
-                       @Value("${services.inventory:http://localhost:8084}") String inventoryUrl) {
+    private final CartRepository cartRepository;
+    private final CatalogLookup catalogLookup;
+    private final StockLookup stockLookup;
+
+    public CartService(CartRepository cartRepository, CatalogLookup catalogLookup, StockLookup stockLookup) {
         this.cartRepository = cartRepository;
-        this.restClient = restClient;
-        this.internalKey = internalKey;
-        this.catalogUrl = catalogUrl;
-        this.inventoryUrl = inventoryUrl;
+        this.catalogLookup = catalogLookup;
+        this.stockLookup = stockLookup;
     }
 
-    public Cart getCart(String userId, String guestToken) {
+    public CartResponse view(String userId, String guestToken) {
+        return present(load(userId, guestToken));
+    }
+
+    public CartResponse addItem(String userId, String guestToken, String productId, int qty) {
+        String id = requireProductId(productId);
+        if (qty < 1) throw new IllegalArgumentException("Add at least 1.");
+        Cart cart = load(userId, guestToken);
+        LinkedHashMap<String, Integer> lines = linesOf(cart);
+        int next = lines.getOrDefault(id, 0) + qty;
+        requireWithinMax(next);
+        catalogLookup.requirePurchasable(id);
+        ensureStock(id, next);
+        lines.put(id, next);
+        return present(save(cart, lines));
+    }
+
+    public CartResponse updateQty(String userId, String guestToken, String productId, int qty) {
+        String id = requireProductId(productId);
+        if (qty < 0) throw new IllegalArgumentException("Quantity cannot be negative.");
+        Cart cart = load(userId, guestToken);
+        LinkedHashMap<String, Integer> lines = linesOf(cart);
+        if (qty == 0) {
+            lines.remove(id);
+            return present(save(cart, lines));
+        }
+        requireWithinMax(qty);
+        catalogLookup.requirePurchasable(id);
+        ensureStock(id, qty);
+        lines.put(id, qty);
+        return present(save(cart, lines));
+    }
+
+    public CartResponse merge(String userId, String guestToken) {
+        if (userId == null || userId.isBlank() || guestToken == null || guestToken.isBlank()) {
+            throw new IllegalArgumentException("Sign in again to keep your basket.");
+        }
+        Cart user = cartRepository.findByUserId(userId).orElseGet(() -> createUserCart(userId));
+        Optional<Cart> guest = cartRepository.findByGuestToken(guestToken);
+        if (guest.isEmpty()) return present(user);
+        LinkedHashMap<String, Integer> lines = linesOf(user);
+        for (var entry : linesOf(guest.get()).entrySet()) {
+            int combined = lines.getOrDefault(entry.getKey(), 0) + entry.getValue();
+            lines.put(entry.getKey(), Math.min(MAX_QTY, combined));
+        }
+        Cart saved = save(user, lines);
+        cartRepository.delete(guest.get());
+        return present(saved);
+    }
+
+    public void clear(String userId) {
+        cartRepository.findByUserId(userId).ifPresent(cart -> save(cart, new LinkedHashMap<>()));
+    }
+
+    public InternalCartResponse internalLines(String userId) {
+        List<InternalCartResponse.Line> lines = linesOf(load(userId, null)).entrySet().stream()
+                .map(entry -> new InternalCartResponse.Line(entry.getKey(), entry.getValue()))
+                .toList();
+        return new InternalCartResponse(lines);
+    }
+
+    private CartResponse present(Cart cart) {
+        List<Cart.Item> items = cart.getItems() == null ? List.of() : cart.getItems();
+        if (items.isEmpty()) return CartResponse.empty();
+        List<String> ids = items.stream().map(Cart.Item::productId).distinct().toList();
+        return CartViews.compose(items, catalogLookup.findByIds(ids), stockLookup.availableFor(ids));
+    }
+
+    private void ensureStock(String productId, int qty) {
+        StockSnapshot snapshot = stockLookup.availableFor(List.of(productId));
+        if (!snapshot.known()) {
+            throw new IllegalArgumentException("We could not confirm stock. Try again.");
+        }
+        int available = snapshot.available().getOrDefault(productId, 0);
+        if (available <= 0) throw new IllegalArgumentException("This item is out of stock.");
+        if (qty > available) throw new IllegalArgumentException("Only " + available + " available.");
+    }
+
+    private Cart load(String userId, String guestToken) {
         if (userId != null && !userId.isBlank()) {
             return cartRepository.findByUserId(userId).orElseGet(() -> createUserCart(userId));
         }
@@ -39,53 +110,6 @@ public class CartService {
             throw new IllegalArgumentException("Guest token is required for guest cart");
         }
         return cartRepository.findByGuestToken(guestToken).orElseGet(() -> createGuestCart(guestToken));
-    }
-
-    public Cart addItem(String userId, String guestToken, String productId, int qty) {
-        validateProductAndStock(productId, qty);
-        Cart cart = getCart(userId, guestToken);
-        Map<String, Integer> map = new HashMap<>();
-        for (var item : cart.getItems()) map.put(item.productId(), item.qty());
-        map.put(productId, map.getOrDefault(productId, 0) + qty);
-        cart.setItems(toItems(map));
-        cart.setUpdatedAt(Instant.now());
-        return cartRepository.save(cart);
-    }
-
-    public Cart updateQty(String userId, String guestToken, String productId, int qty) {
-        if (qty > 0) {
-            validateProductAndStock(productId, qty);
-        }
-        Cart cart = getCart(userId, guestToken);
-        Map<String, Integer> map = new HashMap<>();
-        for (var item : cart.getItems()) map.put(item.productId(), item.qty());
-        if (qty <= 0) map.remove(productId); else map.put(productId, qty);
-        cart.setItems(toItems(map));
-        cart.setUpdatedAt(Instant.now());
-        return cartRepository.save(cart);
-    }
-
-    public Cart merge(String userId, String guestToken) {
-        if (userId == null || userId.isBlank() || guestToken == null || guestToken.isBlank()) {
-            throw new IllegalArgumentException("userId and guestToken required");
-        }
-        Cart user = cartRepository.findByUserId(userId).orElseGet(() -> createUserCart(userId));
-        Cart guest = cartRepository.findByGuestToken(guestToken).orElseGet(() -> createGuestCart(guestToken));
-        Map<String, Integer> map = new HashMap<>();
-        for (var item : user.getItems()) map.put(item.productId(), item.qty());
-        for (var item : guest.getItems()) map.put(item.productId(), map.getOrDefault(item.productId(), 0) + item.qty());
-        user.setItems(toItems(map));
-        user.setUpdatedAt(Instant.now());
-        cartRepository.delete(guest);
-        return cartRepository.save(user);
-    }
-
-    public void clear(String userId) {
-        cartRepository.findByUserId(userId).ifPresent(c -> {
-            c.setItems(List.of());
-            c.setUpdatedAt(Instant.now());
-            cartRepository.save(c);
-        });
     }
 
     private Cart createUserCart(String userId) {
@@ -100,30 +124,32 @@ public class CartService {
         return cartRepository.save(cart);
     }
 
-    private List<Cart.Item> toItems(Map<String, Integer> map) {
-        List<Cart.Item> items = new ArrayList<>();
-        map.forEach((k,v) -> { if (v > 0) items.add(new Cart.Item(k, v)); });
-        return items;
+    private Cart save(Cart cart, LinkedHashMap<String, Integer> lines) {
+        cart.setItems(lines.entrySet().stream()
+                .filter(entry -> entry.getValue() != null && entry.getValue() > 0)
+                .map(entry -> new Cart.Item(entry.getKey(), entry.getValue()))
+                .toList());
+        cart.setUpdatedAt(Instant.now());
+        return cartRepository.save(cart);
     }
 
-    @SuppressWarnings("unchecked")
-    private void validateProductAndStock(String productId, int requestedQty) {
-        restClient.get()
-                .uri(catalogUrl + "/internal/products/" + productId)
-                .header("X-Internal-Key", internalKey)
-                .retrieve()
-                .body(Map.class);
-        List<Map<String, Object>> stocks = restClient.get()
-                .uri(inventoryUrl + "/internal/stock?productIds=" + productId)
-                .header("X-Internal-Key", internalKey)
-                .retrieve()
-                .body(List.class);
-        if (stocks == null || stocks.isEmpty()) {
-            throw new IllegalArgumentException("Stock is unavailable for this product");
+    private static LinkedHashMap<String, Integer> linesOf(Cart cart) {
+        LinkedHashMap<String, Integer> lines = new LinkedHashMap<>();
+        if (cart.getItems() == null) return lines;
+        for (Cart.Item item : cart.getItems()) {
+            if (item != null && item.productId() != null && !item.productId().isBlank() && item.qty() > 0) {
+                lines.put(item.productId(), item.qty());
+            }
         }
-        int available = ((Number) stocks.get(0).get("available")).intValue();
-        if (available < requestedQty) {
-            throw new IllegalArgumentException("Requested quantity is not available");
-        }
+        return lines;
+    }
+
+    private static String requireProductId(String productId) {
+        if (productId == null || productId.isBlank()) throw new IllegalArgumentException("Choose a product.");
+        return productId.trim();
+    }
+
+    private static void requireWithinMax(int qty) {
+        if (qty > MAX_QTY) throw new IllegalArgumentException("You can add up to " + MAX_QTY + " of one item.");
     }
 }

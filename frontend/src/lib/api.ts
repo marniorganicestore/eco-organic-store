@@ -1,5 +1,7 @@
 import { useAuthStore, type AuthUser } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
+import { cartMergePath, rememberCart, type CartView } from './cart'
+import { queryClient } from './queryClient'
 
 export function resolveApiBase(raw: string | undefined): string {
   const value = (raw ?? '').trim().replace(/\/+$/, '')
@@ -129,11 +131,9 @@ async function mergeGuestCart(): Promise<void> {
   const guestToken = useCartStore.getState().guestToken
   if (!guestToken) return
   try {
-    const cart = await apiRequest<{ items: { productId: string; qty: number }[] }>(
-      `/cart/merge?guestToken=${encodeURIComponent(guestToken)}`,
-      { method: 'POST' }
-    )
-    useCartStore.getState().setItems(cart.items ?? [])
+    await queryClient.cancelQueries({ queryKey: ['cart'] })
+    const cart = await apiRequest<CartView>(cartMergePath(guestToken), { method: 'POST' })
+    rememberCart(cart, 'account')
   } catch {
     // Session is already established; cart merge is best-effort.
   }
@@ -141,8 +141,13 @@ async function mergeGuestCart(): Promise<void> {
 
 async function establishSession(auth: AuthResponse): Promise<AuthUser> {
   const user = mapAuthUser(auth)
+  useCartStore.getState().pauseForMerge()
   useAuthStore.getState().setSession(auth.accessToken, user)
-  await mergeGuestCart()
+  try {
+    await mergeGuestCart()
+  } finally {
+    useCartStore.getState().resumeCart()
+  }
   return user
 }
 
@@ -222,6 +227,7 @@ export const authApi = {
     }
   },
   bootstrapSession: async (): Promise<void> => {
+    useCartStore.getState().pauseForMerge()
     try {
       const refreshedToken = await refreshAccessToken()
       if (!refreshedToken) return
@@ -230,6 +236,7 @@ export const authApi = {
     } catch {
       useAuthStore.getState().clearSession()
     } finally {
+      useCartStore.getState().resumeCart()
       useAuthStore.getState().setBootstrapped(true)
     }
   }

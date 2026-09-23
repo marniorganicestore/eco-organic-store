@@ -1,5 +1,5 @@
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ApiError, authApi, api } from './lib/api'
 import { RequireAdmin, RequireAuth } from './components/auth/RequireAuth'
@@ -8,6 +8,12 @@ import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import { useAuthStore } from './store/authStore'
 import { useCartStore } from './store/cartStore'
+import { useCart } from './hooks/useCart'
+import { checkoutBlocker } from './lib/cart'
+import { AddToCartControl } from './components/cart/AddToCartControl'
+import { CartNotice } from './components/cart/CartNotice'
+import { CartSummary } from './components/cart/CartSummary'
+import CartPage from './pages/CartPage'
 import { HomeHero } from './components/home/HomeHero'
 import { AccountLayout } from './components/account/AccountLayout'
 import { UserAvatar } from './components/account/UserAvatar'
@@ -48,12 +54,11 @@ type Product = {
 
 type Category = { id: string; slug: string; name: string }
 
-type CartItem = { productId: string; qty: number }
-
 function Layout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((state) => state.user)
-  const { items } = useCartStore()
-  const qty = items.reduce((sum, i) => sum + i.qty, 0)
+  const items = useCartStore((state) => state.items)
+  useCart()
+  const qty = items.reduce((sum, item) => sum + item.qty, 0)
   const showAdmin = isAdmin(user?.roles)
   const navigate = useNavigate()
   const location = useLocation()
@@ -64,6 +69,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     try {
       await authApi.logout()
     } finally {
+      useCartStore.getState().setItems([])
       queryClient.clear()
       navigate('/login', { replace: true })
     }
@@ -98,7 +104,12 @@ function Layout({ children }: { children: React.ReactNode }) {
             <Link className={navClass('/shop')} to="/shop">Shop</Link>
             <Link className={navClass('/account/orders')} to="/account/orders">Orders</Link>
             {showAdmin ? <Link className={navClass('/admin')} to="/admin">Admin</Link> : null}
-            <Link className={navClass('/cart')} to="/cart">Cart ({qty})</Link>
+            <Link className={navClass('/cart')} to="/cart" aria-label={`Cart, ${qty} ${qty === 1 ? 'item' : 'items'}`}>
+              Cart
+              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-700 px-1.5 text-xs font-medium text-white">
+                {qty}
+              </span>
+            </Link>
             {user ? (
               <div className="flex items-center gap-2">
                 <Link
@@ -131,6 +142,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className={isScenePage ? 'relative' : 'relative mx-auto max-w-6xl px-4 py-8'}>{children}</main>
+      <CartNotice />
     </div>
   )
 }
@@ -245,11 +257,6 @@ function Shop() {
 }
 
 function ProductCard({ p }: { p: Product }) {
-  const { guestToken, setItems } = useCartStore()
-  async function add() {
-    const cart = await api.post<{ items: CartItem[] }>(`/cart?guestToken=${guestToken}`, { productId: p.id, qty: 1 })
-    setItems(cart.items)
-  }
   return (
     <article className={`${storeCard} overflow-hidden p-4`}>
       <Link to={`/product/${p.slug}`}>
@@ -258,14 +265,13 @@ function ProductCard({ p }: { p: Product }) {
       </Link>
       <p className="text-sm text-slate-500">{p.unit} • {p.origin}</p>
       <p className="mt-1 font-semibold text-emerald-900">₹{(p.pricePaise / 100).toFixed(2)}</p>
-      <button type="button" onClick={add} className={`${storeBtn} mt-3 w-full`}>Add to cart</button>
+      <AddToCartControl productId={p.id} productName={p.name} layout="card" />
     </article>
   )
 }
 
 function ProductPage() {
   const { slug } = useParams()
-  const { guestToken, setItems } = useCartStore()
   const [product, setProduct] = useState<Product | null>(null)
   const [reviews, setReviews] = useState<any[]>([])
   useEffect(() => {
@@ -277,11 +283,6 @@ function ProductPage() {
   if (!product) return <p className="text-sm text-emerald-900/80">Loading...</p>
   const current = product
 
-  async function add() {
-    const cart = await api.post<{ items: CartItem[] }>(`/cart?guestToken=${guestToken}`, { productId: current.id, qty: 1 })
-    setItems(cart.items)
-  }
-
   return (
     <PageShell title={product.name} subtitle={`${product.unit} • ${product.origin}`}>
       <section className="grid gap-8 md:grid-cols-2">
@@ -289,7 +290,7 @@ function ProductPage() {
         <div className={`${storeCard} p-6`}>
           <p className="text-slate-600">{product.description}</p>
           <p className="my-4 text-2xl font-semibold text-emerald-950">₹{(product.pricePaise / 100).toFixed(2)}</p>
-          <button type="button" onClick={add} className={`${storeBtn} w-full`}>Add to cart</button>
+          <AddToCartControl productId={current.id} productName={current.name} layout="detail" />
         </div>
         <div className={`${storeCard} p-6 md:col-span-2`}>
           <h3 className="mb-3 text-lg font-semibold text-emerald-950">Reviews</h3>
@@ -302,44 +303,19 @@ function ProductPage() {
   )
 }
 
-function CartPage() {
-  const { guestToken, items, setItems } = useCartStore()
-  const navigate = useNavigate()
-  useEffect(() => {
-    api.get<{ items: CartItem[] }>(`/cart?guestToken=${guestToken}`).then((c) => setItems(c.items || []))
-  }, [guestToken, setItems])
-
-  const totalItems = useMemo(() => items.reduce((sum, i) => sum + i.qty, 0), [items])
-
-  return (
-    <PageShell title="Cart" subtitle="Review your basket before checkout.">
-      <div className={`${storeCard} p-6`}>
-        {items.length === 0 ? <p className="text-slate-500">Your cart is empty.</p> : null}
-        <ul className="space-y-3">
-          {items.map((i) => (
-            <li key={i.productId} className="rounded-xl border border-emerald-100 bg-white/70 p-3 text-sm text-emerald-950">
-              {i.productId} × {i.qty}
-            </li>
-          ))}
-        </ul>
-        <button
-          disabled={!totalItems}
-          className={`${storeBtn} mt-5`}
-          onClick={() => navigate('/checkout')}
-        >
-          Proceed to checkout
-        </button>
-      </div>
-    </PageShell>
-  )
-}
-
 function CheckoutPage() {
   const address = useCheckoutAddress()
+  const cartQuery = useCart()
+  const blocker = cartQuery.data ? checkoutBlocker(cartQuery.data) : null
+  const ready = Boolean(cartQuery.data && blocker == null)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
 
   async function pay() {
+    if (!ready) {
+      setError(blocker ?? 'Your basket is not ready for payment.')
+      return
+    }
     if (!address.shippingAddress.trim()) {
       setError('Add a delivery address to continue.')
       return
@@ -356,21 +332,24 @@ function CheckoutPage() {
   }
 
   return (
-    <PageShell title="Checkout" subtitle="Where should we send this order?">
-      <div className={`${storeCard} max-w-xl space-y-4 p-6`}>
-        {error ? <FormBanner tone="error">{error}</FormBanner> : null}
-        <ShippingAddressPicker
-          loading={address.loading}
-          deliverable={address.deliverable}
-          needsDetails={address.needsDetails}
-          selectedId={address.selectedId}
-          customValue={address.customValue}
-          onSelect={address.select}
-          onCustomChange={address.setCustomValue}
-        />
-        <button className={`${storeBtn} w-full`} type="button" disabled={pending || address.loading} aria-busy={pending} onClick={pay}>
-          {pending ? 'Starting payment...' : 'Continue to payment'}
-        </button>
+    <PageShell title="Checkout" subtitle="Confirm the basket and where we should send it.">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className={`${storeCard} max-w-xl space-y-4 p-6`}>
+          {error ? <FormBanner tone="error">{error}</FormBanner> : null}
+          <ShippingAddressPicker
+            loading={address.loading}
+            deliverable={address.deliverable}
+            needsDetails={address.needsDetails}
+            selectedId={address.selectedId}
+            customValue={address.customValue}
+            onSelect={address.select}
+            onCustomChange={address.setCustomValue}
+          />
+          <button className={`${storeBtn} w-full`} type="button" disabled={pending || address.loading || cartQuery.isPending || !ready} aria-busy={pending} onClick={pay}>
+            {pending ? 'Starting payment...' : 'Continue to payment'}
+          </button>
+        </div>
+        <CartSummary cart={cartQuery.data} loading={cartQuery.isPending} showLines showCheckout={false} />
       </div>
     </PageShell>
   )

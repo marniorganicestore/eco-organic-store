@@ -58,6 +58,14 @@ public class CatalogController {
         return productRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Product not found"));
     }
 
+    @GetMapping("/internal/products")
+    public List<ProductSnapshot> internalByIds(@RequestParam List<String> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        List<String> distinct = ids.stream().filter(id -> id != null && !id.isBlank()).distinct().limit(40).toList();
+        if (distinct.isEmpty()) return List.of();
+        return productRepository.findAllById(distinct).stream().map(ProductSnapshot::from).toList();
+    }
+
     @PatchMapping("/internal/products/{id}/rating")
     public Product updateRating(@PathVariable String id, @RequestBody RatingRequest request) {
         Product p = productRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Product not found"));
