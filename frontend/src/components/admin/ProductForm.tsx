@@ -4,6 +4,7 @@ import { productIssue, slugify, type AdminCategory, type ProductDraft } from '..
 import { storeBtn, storeBtnGhost, storeCard, storeInput } from '../layout/PageShell'
 import { TextField } from '../account/TextField'
 import { FormBanner } from '../account/FormBanner'
+import { ImageField } from './ImageField'
 
 type ProductFormProps = {
   categories: AdminCategory[]
@@ -105,12 +106,13 @@ export function ProductForm({
           onChange={(event) => update({ description: event.target.value })}
         />
       </label>
-      <TextField
-        id="product-image"
-        label="Image URL"
-        value={draft.image}
-        hint="A direct image address. Uploads stay out of this desk."
-        onChange={(image) => update({ image })}
+      <ImageField
+        id="product-images"
+        label="Photos"
+        images={draft.images}
+        max={6}
+        disabled={pending}
+        onChange={(images) => update({ images })}
       />
       <TextField
         id="product-certifications"

@@ -91,6 +91,7 @@ async function refreshAccessToken(): Promise<string | null> {
 type RequestOptions = {
   method?: string
   body?: unknown
+  form?: FormData
   retryOn401?: boolean
   includeAuth?: boolean
 }
@@ -101,13 +102,13 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const method = options.method ?? 'GET'
   const includeAuth = options.includeAuth ?? true
 
-  if (options.body !== undefined) headers.set('Content-Type', 'application/json')
+  if (options.form === undefined && options.body !== undefined) headers.set('Content-Type', 'application/json')
   if (includeAuth && token) headers.set('Authorization', `Bearer ${token}`)
 
   const response = await fetch(joinApiPath(path), {
     method,
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body: options.form ?? (options.body !== undefined ? JSON.stringify(options.body) : undefined),
     credentials: 'include'
   })
 
@@ -151,7 +152,12 @@ export const api = {
     apiRequest<T>(path, { method: 'POST', body, includeAuth }),
   put: <T>(path: string, body: unknown) => apiRequest<T>(path, { method: 'PUT', body }),
   patch: <T>(path: string, body: unknown) => apiRequest<T>(path, { method: 'PATCH', body }),
-  delete: <T>(path: string) => apiRequest<T>(path, { method: 'DELETE' })
+  delete: <T>(path: string) => apiRequest<T>(path, { method: 'DELETE' }),
+  upload: <T>(path: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiRequest<T>(path, { method: 'POST', form })
+  }
 }
 
 export const authApi = {

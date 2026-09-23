@@ -8,6 +8,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -42,6 +43,14 @@ public class ApiExceptionHandler {
             detail = ex.getBindingResult().getFieldError().getDefaultMessage();
         }
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        pd.setTitle("Validation failed");
+        pd.setProperties(Map.of("path", req.getRequestURI(), "timestamp", OffsetDateTime.now()));
+        return pd;
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ProblemDetail uploadTooLarge(MaxUploadSizeExceededException ex, HttpServletRequest req) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.PAYLOAD_TOO_LARGE, "Use a photo under 1.5 MB.");
         pd.setTitle("Validation failed");
         pd.setProperties(Map.of("path", req.getRequestURI(), "timestamp", OffsetDateTime.now()));
         return pd;

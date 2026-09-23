@@ -29,6 +29,7 @@ import AdminPaymentsPage from './pages/admin/AdminPaymentsPage'
 import AdminReviewsPage from './pages/admin/AdminReviewsPage'
 import AdminPeoplePage from './pages/admin/AdminPeoplePage'
 import { storeBtn, storeBtnGhost, storeCard, storeInput, PageShell } from './components/layout/PageShell'
+import { resolveImageSrc } from './lib/media'
 
 type Product = {
   id: string
@@ -252,7 +253,7 @@ function ProductCard({ p }: { p: Product }) {
   return (
     <article className={`${storeCard} overflow-hidden p-4`}>
       <Link to={`/product/${p.slug}`}>
-        <img className="mb-3 h-44 w-full rounded-xl object-cover" src={p.images?.[0]} alt={p.name} />
+        <img className="mb-3 h-44 w-full rounded-xl object-cover" src={resolveImageSrc(p.images?.[0])} alt={p.name} />
         <h3 className="font-medium text-emerald-950">{p.name}</h3>
       </Link>
       <p className="text-sm text-slate-500">{p.unit} • {p.origin}</p>
@@ -284,7 +285,7 @@ function ProductPage() {
   return (
     <PageShell title={product.name} subtitle={`${product.unit} • ${product.origin}`}>
       <section className="grid gap-8 md:grid-cols-2">
-        <img src={product.images?.[0]} alt={product.name} className="h-96 w-full rounded-2xl object-cover shadow-lg" />
+        <img src={resolveImageSrc(product.images?.[0])} alt={product.name} className="h-96 w-full rounded-2xl object-cover shadow-lg" />
         <div className={`${storeCard} p-6`}>
           <p className="text-slate-600">{product.description}</p>
           <p className="my-4 text-2xl font-semibold text-emerald-950">₹{(product.pricePaise / 100).toFixed(2)}</p>

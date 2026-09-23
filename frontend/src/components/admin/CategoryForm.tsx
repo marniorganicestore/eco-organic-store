@@ -4,6 +4,7 @@ import { categoryIssue, slugify, type CategoryDraft } from '../../lib/adminDesk'
 import { storeBtn, storeBtnGhost, storeCard } from '../layout/PageShell'
 import { TextField } from '../account/TextField'
 import { FormBanner } from '../account/FormBanner'
+import { ImageField } from './ImageField'
 
 type CategoryFormProps = {
   initial: CategoryDraft
@@ -73,13 +74,14 @@ export function CategoryForm({
           inputMode="numeric"
           onChange={(sortOrder) => setDraft((current) => ({ ...current, sortOrder }))}
         />
-        <TextField
-          id="category-image"
-          label="Image URL"
-          value={draft.image}
-          onChange={(image) => setDraft((current) => ({ ...current, image }))}
-        />
       </div>
+      <ImageField
+        id="category-image"
+        label="Image"
+        images={draft.image ? [draft.image] : []}
+        disabled={pending}
+        onChange={(images) => setDraft((current) => ({ ...current, image: images[0] ?? '' }))}
+      />
       <button type="submit" className={storeBtn} disabled={pending} aria-busy={pending}>
         {pending ? 'Saving...' : 'Save category'}
       </button>

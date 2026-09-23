@@ -3,6 +3,10 @@ server:
 spring:
   application:
     name: catalog-service
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/catalog}
   threads:

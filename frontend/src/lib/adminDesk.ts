@@ -36,7 +36,7 @@ export type ProductDraft = {
   slug: string
   description: string
   priceRupees: string
-  image: string
+  images: string[]
   categoryId: string
   origin: string
   certifications: string
@@ -200,7 +200,7 @@ export function emptyProductDraft(categoryId = ''): ProductDraft {
     slug: '',
     description: '',
     priceRupees: '',
-    image: '',
+    images: [],
     categoryId,
     origin: '',
     certifications: '',
@@ -216,7 +216,7 @@ export function productToDraft(product: AdminProduct): ProductDraft {
     slug: product.slug,
     description: product.description ?? '',
     priceRupees: paiseToRupees(product.pricePaise),
-    image: product.images[0] ?? '',
+    images: product.images ?? [],
     categoryId: product.categoryId,
     origin: product.origin ?? '',
     certifications: product.certifications.join(', '),
@@ -243,7 +243,7 @@ export function toProductWrite(draft: ProductDraft): ProductWrite {
     slug: slugify(draft.slug || draft.name),
     description: draft.description.trim(),
     pricePaise,
-    images: draft.image.trim() ? [draft.image.trim()] : [],
+    images: draft.images.map((image) => image.trim()).filter(Boolean).slice(0, 6),
     categoryId: draft.categoryId,
     origin: draft.origin.trim(),
     certifications: splitList(draft.certifications),
