@@ -114,6 +114,12 @@ module identityService 'modules/container-app.bicep' = {
       { name: 'ADMIN_PASSWORD', secretRef: 'admin-password' }
       { name: 'COOKIE_SECURE', value: 'true' }
       { name: 'COOKIE_SAME_SITE', value: 'None' }
+      { name: 'STOREFRONT_URL', value: storefrontUrl }
+      { name: 'MAIL_ENABLED', value: 'false' }
+      { name: 'MAIL_FROM', value: 'admin@eco-organic-store.com' }
+      { name: 'MAIL_FROM_NAME', value: 'Marni eco organic store' }
+      { name: 'MAIL_ADMIN', value: 'admin@eco-organic-store.com' }
+      { name: 'MAIL_USERNAME', value: 'admin@eco-organic-store.com' }
     ]
   }
 }
@@ -204,6 +210,7 @@ module orderService 'modules/container-app.bicep' = {
       { name: 'INVENTORY_SERVICE_URL', value: inventoryUrl }
       { name: 'CATALOG_SERVICE_URL', value: catalogUrl }
       { name: 'PAYMENT_SERVICE_URL', value: paymentUrl }
+      { name: 'IDENTITY_SERVICE_URL', value: identityUrl }
     ]
   }
 }

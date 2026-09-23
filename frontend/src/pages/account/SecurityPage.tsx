@@ -59,7 +59,7 @@ export default function SecurityPage() {
           <PasswordField id="current-password" label="Current password" value={currentPassword} autoComplete="current-password" disabled={pending} onChange={setCurrentPassword} />
           <PasswordField id="new-password" label="New password" value={newPassword} autoComplete="new-password" disabled={pending} onChange={setNewPassword} />
           <PasswordField id="confirm-password" label="Confirm new password" value={confirmPassword} autoComplete="new-password" disabled={pending} onChange={setConfirmPassword} />
-          <p className="text-xs text-slate-500">Use 8–72 characters. This signs out your other devices.</p>
+          <p className="text-xs text-slate-500">Use 8–72 characters. This signs out your other devices and emails you a confirmation.</p>
           <button className={storeBtn} type="submit" disabled={pending} aria-busy={pending}>
             {pending ? 'Updating...' : 'Update password'}
           </button>

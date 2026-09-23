@@ -23,3 +23,13 @@ app:
   cookie:
     secure: ${COOKIE_SECURE:false}
     same-site: ${COOKIE_SAME_SITE:Lax}
+  storefront-url: ${STOREFRONT_URL:http://localhost:5173}
+  mail:
+    enabled: ${MAIL_ENABLED:false}
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:admin@eco-organic-store.com}
+    password: ${MAIL_PASSWORD:}
+    from: ${MAIL_FROM:admin@eco-organic-store.com}
+    from-name: ${MAIL_FROM_NAME:Marni eco organic store}
+    admin: ${MAIL_ADMIN:admin@eco-organic-store.com}

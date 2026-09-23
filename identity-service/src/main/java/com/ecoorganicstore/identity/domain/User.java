@@ -22,6 +22,8 @@ public class User {
     private Boolean enabled;
     private List<Address> addresses = new ArrayList<>();
     private int refreshTokenVersion = 0;
+    /** Null means the customer still wants order mail. */
+    private Boolean orderEmails;
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -53,4 +55,6 @@ public class User {
     }
     public int getRefreshTokenVersion() { return refreshTokenVersion; }
     public void setRefreshTokenVersion(int refreshTokenVersion) { this.refreshTokenVersion = refreshTokenVersion; }
+    public boolean wantsOrderEmail() { return !Boolean.FALSE.equals(orderEmails); }
+    public void setOrderEmails(boolean orderEmails) { this.orderEmails = orderEmails; }
 }

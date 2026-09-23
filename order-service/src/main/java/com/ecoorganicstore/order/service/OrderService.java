@@ -19,6 +19,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final RestClient restClient;
     private final String internalKey;
+    private final OrderNotifier orderNotifier;
 
     @Value("${services.cart:http://localhost:8083}")
     private String cartUrl;
@@ -30,10 +31,11 @@ public class OrderService {
     private String paymentUrl;
 
     public OrderService(OrderRepository orderRepository, RestClient restClient,
-                        @Value("${app.internal-key}") String internalKey) {
+                        @Value("${app.internal-key}") String internalKey, OrderNotifier orderNotifier) {
         this.orderRepository = orderRepository;
         this.restClient = restClient;
         this.internalKey = internalKey;
+        this.orderNotifier = orderNotifier;
     }
 
     public CheckoutResponse checkout(String userId, String shippingAddress) {
@@ -108,6 +110,7 @@ public class OrderService {
                 .header("X-Internal-Key", internalKey).retrieve().toBodilessEntity();
         restClient.delete().uri(cartUrl + "/internal/cart/" + order.getUserId())
                 .header("X-Internal-Key", internalKey).retrieve().toBodilessEntity();
+        orderNotifier.statusChanged(order);
         return order;
     }
 
@@ -121,7 +124,9 @@ public class OrderService {
     public Order updateStatus(String orderNumber, String status) {
         Order order = orderRepository.findByOrderNumber(orderNumber).orElseThrow(() -> new IllegalArgumentException("Order not found"));
         order.setOrderStatus(Fulfillment.advance(order.getOrderStatus(), status));
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        orderNotifier.statusChanged(saved);
+        return saved;
     }
 
     public record CheckoutResponse(String orderNumber, String checkoutUrl) {}

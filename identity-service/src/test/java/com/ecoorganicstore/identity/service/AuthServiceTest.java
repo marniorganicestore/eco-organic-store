@@ -4,9 +4,11 @@ import com.ecoorganicstore.common.security.JwtService;
 import com.ecoorganicstore.common.web.UnauthorizedException;
 import com.ecoorganicstore.identity.domain.User;
 import com.ecoorganicstore.identity.repo.UserRepository;
+import com.ecoorganicstore.identity.service.mail.AccountMail;
+import com.ecoorganicstore.identity.service.mail.PasswordResets;
 import com.ecoorganicstore.identity.web.AuthDtos.ChangePasswordRequest;
-import com.ecoorganicstore.identity.web.AuthDtos.ConfirmResetRequest;
 import com.ecoorganicstore.identity.web.AuthDtos.LoginRequest;
+import com.ecoorganicstore.identity.web.AuthDtos.MessageResponse;
 import com.ecoorganicstore.identity.web.AuthDtos.RegisterRequest;
 import com.ecoorganicstore.identity.web.AuthDtos.RequestResetRequest;
 import org.mockito.ArgumentCaptor;
@@ -38,7 +40,7 @@ class AuthServiceTest {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         JwtService jwtService = mock(JwtService.class);
-        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax");
+        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
 
         User user = customer("u-1", 0);
         user.setPasswordHash("hash");
@@ -64,7 +66,7 @@ class AuthServiceTest {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         JwtService jwtService = mock(JwtService.class);
-        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax");
+        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
 
         User user = new User();
         user.setEmail("user@eco-organic-store.com");
@@ -83,7 +85,7 @@ class AuthServiceTest {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         JwtService jwtService = mock(JwtService.class);
-        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax");
+        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
 
         when(userRepository.findByEmail("missing@eco-organic-store.com")).thenReturn(Optional.empty());
         when(encoder.encode("unknown-user")).thenReturn("dummy-hash");
@@ -100,7 +102,7 @@ class AuthServiceTest {
     void googleLoginStoresAvatarAndIssuesTokens() {
         UserRepository userRepository = mock(UserRepository.class);
         JwtService jwtService = mock(JwtService.class);
-        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax");
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
 
         when(userRepository.findByEmail("user@eco-organic-store.com")).thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -123,7 +125,7 @@ class AuthServiceTest {
     void logoutRevokesRefreshFamilyAndClearsCookie() {
         UserRepository userRepository = mock(UserRepository.class);
         JwtService jwtService = new JwtService(SECRET);
-        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax");
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
 
         User user = customer("u-1", 3);
         String refresh = jwtService.createRefreshToken("u-1", "user@eco-organic-store.com", List.of("CUSTOMER"), 3600, 3);
@@ -148,7 +150,7 @@ class AuthServiceTest {
     void logoutRevokesViaGatewayUserWhenCookieIsMissing() {
         UserRepository userRepository = mock(UserRepository.class);
         AuthService authService = new AuthService(
-                userRepository, mock(PasswordEncoder.class), new JwtService(SECRET), false, "Lax");
+                userRepository, mock(PasswordEncoder.class), new JwtService(SECRET), false, "Lax", AccountMail.none(), mock(PasswordResets.class));
 
         User user = customer("u-1", 1);
         when(userRepository.findById("u-1")).thenReturn(Optional.of(user));
@@ -167,7 +169,7 @@ class AuthServiceTest {
     void refreshRejectsRevokedRefreshToken() {
         UserRepository userRepository = mock(UserRepository.class);
         JwtService jwtService = new JwtService(SECRET);
-        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax");
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
 
         User user = customer("u-1", 5);
         String staleRefresh = jwtService.createRefreshToken("u-1", "user@eco-organic-store.com", List.of("CUSTOMER"), 3600, 4);
@@ -186,7 +188,7 @@ class AuthServiceTest {
     void refreshRejectsAccessToken() {
         UserRepository userRepository = mock(UserRepository.class);
         JwtService jwtService = new JwtService(SECRET);
-        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax");
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
 
         String access = jwtService.createAccessToken("u-1", "user@eco-organic-store.com", List.of("CUSTOMER"), 600);
 
@@ -202,7 +204,7 @@ class AuthServiceTest {
     @Test
     void refreshRejectsMissingCookie() {
         AuthService authService = new AuthService(
-                mock(UserRepository.class), mock(PasswordEncoder.class), new JwtService(SECRET), false, "Lax");
+                mock(UserRepository.class), mock(PasswordEncoder.class), new JwtService(SECRET), false, "Lax", AccountMail.none(), mock(PasswordResets.class));
 
         UnauthorizedException exception = assertThrows(
                 UnauthorizedException.class,
@@ -215,7 +217,7 @@ class AuthServiceTest {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         JwtService jwtService = mock(JwtService.class);
-        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax");
+        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
         User user = customer("u-1", 2);
         user.setPasswordHash("hash");
         when(userRepository.findById("u-1")).thenReturn(Optional.of(user));
@@ -239,7 +241,7 @@ class AuthServiceTest {
     void changePasswordRejectsGoogleAccountsAndAWrongCurrentPassword() {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
-        AuthService authService = new AuthService(userRepository, encoder, mock(JwtService.class), false, "Lax");
+        AuthService authService = new AuthService(userRepository, encoder, mock(JwtService.class), false, "Lax", AccountMail.none(), mock(PasswordResets.class));
         User googleUser = customer("u-1", 0);
         when(userRepository.findById("u-1")).thenReturn(Optional.of(googleUser));
 
@@ -262,7 +264,7 @@ class AuthServiceTest {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         JwtService jwtService = mock(JwtService.class);
-        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax");
+        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
         when(userRepository.findByEmail("ada@eco-organic-store.com")).thenReturn(Optional.empty());
         when(encoder.encode("secret123")).thenReturn("hash");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -298,7 +300,7 @@ class AuthServiceTest {
     void loginRejectsADisabledAccountOnlyAfterThePasswordMatches() {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
-        AuthService authService = new AuthService(userRepository, encoder, mock(JwtService.class), false, "Lax");
+        AuthService authService = new AuthService(userRepository, encoder, mock(JwtService.class), false, "Lax", AccountMail.none(), mock(PasswordResets.class));
         User user = customer("u-1", 0);
         user.setPasswordHash("hash");
         user.setEnabled(false);
@@ -321,7 +323,7 @@ class AuthServiceTest {
     @Test
     void googleLoginRejectsADisabledAccount() {
         UserRepository userRepository = mock(UserRepository.class);
-        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), mock(JwtService.class), false, "Lax");
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), mock(JwtService.class), false, "Lax", AccountMail.none(), mock(PasswordResets.class));
         User user = customer("u-1", 0);
         user.setEnabled(false);
         when(userRepository.findByEmail("user@eco-organic-store.com")).thenReturn(Optional.of(user));
@@ -337,7 +339,7 @@ class AuthServiceTest {
     void refreshRejectsADisabledAccount() {
         UserRepository userRepository = mock(UserRepository.class);
         JwtService jwtService = new JwtService(SECRET);
-        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax");
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
         User user = customer("u-1", 2);
         user.setEnabled(false);
         String refresh = jwtService.createRefreshToken("u-1", "user@eco-organic-store.com", List.of("CUSTOMER"), 3600, 2);
@@ -352,22 +354,17 @@ class AuthServiceTest {
     }
 
     @Test
-    void requestResetAndConfirmResetReturnGenericMessages() {
-        UserRepository userRepository = mock(UserRepository.class);
-        PasswordEncoder encoder = mock(PasswordEncoder.class);
-        JwtService jwtService = mock(JwtService.class);
-        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax");
-
-        User existing = new User();
-        existing.setId("u-99");
-        when(userRepository.findByEmail("existing@eco-organic-store.com")).thenReturn(Optional.of(existing));
+    void requestResetDelegatesAndKeepsTheReplyGeneric() {
+        PasswordResets resets = mock(PasswordResets.class);
+        when(resets.request(any())).thenReturn(new MessageResponse(
+                "If an account exists, password reset instructions will be sent."));
+        AuthService authService = new AuthService(
+                mock(UserRepository.class), mock(PasswordEncoder.class), mock(JwtService.class), false, "Lax", AccountMail.none(), resets);
 
         var requestMessage = authService.requestPasswordReset(new RequestResetRequest("existing@eco-organic-store.com"));
-        var confirmMessage = authService.confirmPasswordReset(new ConfirmResetRequest("token-shell", "newPassword123"));
 
         assertEquals("If an account exists, password reset instructions will be sent.", requestMessage.message());
-        assertEquals("Password reset request accepted.", confirmMessage.message());
-        verify(userRepository).findByEmail("existing@eco-organic-store.com");
+        verify(resets).request(any());
     }
 
     private static User customer(String id, int refreshTokenVersion) {

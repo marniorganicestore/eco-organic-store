@@ -59,6 +59,15 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-Lax}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      STOREFRONT_URL: ${STOREFRONT_URL:-http://localhost:5173}
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-admin@eco-organic-store.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-admin@eco-organic-store.com}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Marni eco organic store}
+      MAIL_ADMIN: ${MAIL_ADMIN:-admin@eco-organic-store.com}
 
   catalog-service:
     <<: *app
@@ -125,6 +134,7 @@ services:
       INVENTORY_SERVICE_URL: http://inventory-service:8084
       CATALOG_SERVICE_URL: http://catalog-service:8082
       PAYMENT_SERVICE_URL: http://payment-service:8086
+      IDENTITY_SERVICE_URL: http://identity-service:8081
 
   payment-service:
     <<: *app

@@ -5,6 +5,8 @@ import com.ecoorganicstore.common.web.UnauthorizedException;
 import com.ecoorganicstore.identity.domain.AccountRoles;
 import com.ecoorganicstore.identity.domain.User;
 import com.ecoorganicstore.identity.repo.UserRepository;
+import com.ecoorganicstore.identity.service.mail.AccountMail;
+import com.ecoorganicstore.identity.service.mail.PasswordResets;
 import com.ecoorganicstore.identity.web.AuthDtos.AuthResponse;
 import com.ecoorganicstore.identity.web.AuthDtos.ChangePasswordRequest;
 import com.ecoorganicstore.identity.web.AuthDtos.ConfirmResetRequest;
@@ -37,6 +39,8 @@ public class AuthService {
     private final JwtService jwtService;
     private final boolean cookieSecure;
     private final String cookieSameSite;
+    private final AccountMail accountMail;
+    private final PasswordResets passwordResets;
     private volatile String cachedDummyPasswordHash;
 
     public AuthService(
@@ -44,12 +48,16 @@ public class AuthService {
             PasswordEncoder encoder,
             JwtService jwtService,
             @Value("${app.cookie.secure:false}") boolean cookieSecure,
-            @Value("${app.cookie.same-site:Lax}") String cookieSameSite) {
+            @Value("${app.cookie.same-site:Lax}") String cookieSameSite,
+            AccountMail accountMail,
+            PasswordResets passwordResets) {
         this.userRepository = userRepository;
         this.encoder = encoder;
         this.jwtService = jwtService;
         this.cookieSecure = cookieSecure;
         this.cookieSameSite = cookieSameSite;
+        this.accountMail = accountMail;
+        this.passwordResets = passwordResets;
     }
 
     public AuthResponse register(RegisterRequest request, HttpServletResponse response) {
@@ -64,6 +72,9 @@ public class AuthService {
         user.setRoles(AccountRoles.customer());
         user.setEnabled(true);
         user = userRepository.save(user);
+        String welcomeName = user.getName();
+        String welcomeEmail = user.getEmail();
+        notify(() -> accountMail.welcome(welcomeName, welcomeEmail));
         return issueTokens(user, response);
     }
 
@@ -106,6 +117,11 @@ public class AuthService {
         }
         user.setRoles(AccountRoles.forToken(user.getRoles()));
         user = userRepository.save(user);
+        if (created) {
+            String welcomeName = user.getName();
+            String welcomeEmail = user.getEmail();
+            notify(() -> accountMail.welcome(welcomeName, welcomeEmail));
+        }
         return issueTokens(user, response);
     }
 
@@ -141,20 +157,16 @@ public class AuthService {
         user.setPasswordHash(encoder.encode(request.newPassword()));
         user.setRefreshTokenVersion(user.getRefreshTokenVersion() + 1);
         userRepository.save(user);
+        notify(() -> accountMail.passwordChanged(user.getName(), user.getEmail()));
         return issueTokens(user, response);
     }
 
     public MessageResponse requestPasswordReset(RequestResetRequest request) {
-        // Intentionally generic: never reveal whether email exists.
-        userRepository.findByEmail(request.email().toLowerCase())
-                .ifPresent(user -> log.info("Password reset requested for existing account userId={}", user.getId()));
-        return new MessageResponse("If an account exists, password reset instructions will be sent.");
+        return passwordResets.request(request);
     }
 
     public MessageResponse confirmPasswordReset(ConfirmResetRequest request) {
-        // Shell flow only in v1: token plumbing/email integration comes later.
-        log.info("Password reset confirmation requested.");
-        return new MessageResponse("Password reset request accepted.");
+        return passwordResets.confirm(request);
     }
 
     static String readCookie(HttpServletRequest request, String name) {
@@ -238,6 +250,14 @@ public class AuthService {
             cachedDummyPasswordHash = hash;
         }
         return hash;
+    }
+
+    private void notify(Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException ex) {
+            log.warn("Account email was not queued: {}", ex.toString());
+        }
     }
 
     private ResponseCookie refreshCookie(String value, Duration maxAge) {

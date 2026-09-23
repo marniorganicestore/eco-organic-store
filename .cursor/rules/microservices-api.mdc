@@ -29,7 +29,7 @@ Add new public paths by updating **both** the service controller and `gateway/sr
 
 Service-to-service only. Protected by `InternalKeyFilter`. Gateway must not proxy these.
 
-Typical: catalog product-by-id + rating rollup · inventory reserve/confirm/release + stock batch · cart get/clear by user · payment session · order mark-paid + verified-purchase.
+Typical: catalog product-by-id + rating rollup · inventory reserve/confirm/release + stock batch · cart get/clear by user · payment session · order mark-paid + verified-purchase · identity `POST /internal/notifications/orders` (order mail; gateway must not proxy it).
 
 ## Invariants
 

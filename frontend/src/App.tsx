@@ -24,6 +24,7 @@ import ProfilePage from './pages/account/ProfilePage'
 import AddressesPage from './pages/account/AddressesPage'
 import SecurityPage from './pages/account/SecurityPage'
 import OrdersPage from './pages/account/OrdersPage'
+import NotificationsPage from './pages/account/NotificationsPage'
 import { STORE_NAME } from './lib/brand'
 import { firstName, isAdmin } from './lib/userDisplay'
 import { AdminLayout } from './components/admin/AdminLayout'
@@ -171,6 +172,7 @@ export default function App() {
           <Route path="addresses" element={<AddressesPage />} />
           <Route path="security" element={<SecurityPage />} />
           <Route path="orders" element={<OrdersPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -332,7 +334,7 @@ function CheckoutPage() {
   }
 
   return (
-    <PageShell title="Checkout" subtitle="Confirm the basket and where we should send it.">
+    <PageShell title="Checkout" subtitle="Confirm the basket and where we should send it. After payment, the receipt comes from admin@eco-organic-store.com.">
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className={`${storeCard} max-w-xl space-y-4 p-6`}>
           {error ? <FormBanner tone="error">{error}</FormBanner> : null}
@@ -357,9 +359,16 @@ function CheckoutPage() {
 
 function OrderSuccess() {
   return (
-    <PageShell title="Thank you">
-      <div className={`${storeCard} p-8 text-emerald-950`}>
-        Order payment completed. Thank you for choosing {STORE_NAME}.
+    <PageShell title="Thank you" subtitle="Payment is complete.">
+      <div className={`${storeCard} max-w-xl space-y-4 p-8 text-emerald-950`}>
+        <h2 className="text-xl font-semibold">Your order is confirmed</h2>
+        <p className="text-sm text-slate-600">
+          A receipt is on its way from admin@eco-organic-store.com when order emails are on. You can follow packing and delivery from your orders.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/account/orders" className={storeBtn}>View orders</Link>
+          <Link to="/account/notifications" className={storeBtnGhost}>Email settings</Link>
+        </div>
       </div>
     </PageShell>
   )

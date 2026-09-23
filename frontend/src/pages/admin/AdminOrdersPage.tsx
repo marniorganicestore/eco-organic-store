@@ -25,7 +25,7 @@ export default function AdminOrdersPage() {
   return (
     <PageShell
       title="Orders"
-      subtitle="Paid orders move one step at a time: packed, then shipped, then delivered. Payment stays with checkout."
+      subtitle="Paid orders move one step at a time: packed, then shipped, then delivered. Each step emails the customer when order updates are on."
     >
       {orders.isPending ? <AdminPending label="Loading orders..." /> : null}
       {orders.isError ? <FormBanner tone="error">Unable to load orders. Refresh and try again.</FormBanner> : null}
