@@ -1,9 +1,12 @@
 package com.ecoorganicstore.order.config;
 
 import com.ecoorganicstore.common.security.InternalKeyFilter;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -26,6 +29,12 @@ public class AppConfig {
 
     @Bean
     RestClient restClient() {
-        return RestClient.builder().build();
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        // Longer than one Stripe attempt (10s connect + 20s read) and shorter than the gateway read timeout.
+        requestFactory.setReadTimeout(Duration.ofSeconds(40));
+        return RestClient.builder().requestFactory(requestFactory).build();
     }
 }

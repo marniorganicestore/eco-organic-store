@@ -6,12 +6,12 @@ import com.ecoorganicstore.payment.repo.PaymentRepository;
 import com.ecoorganicstore.payment.repo.ProcessedEventRepository;
 import com.ecoorganicstore.common.web.UnauthorizedException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
-import com.stripe.param.checkout.SessionCreateParams;
+import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
+import com.stripe.param.checkout.SessionCreateParams;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -60,7 +60,6 @@ public class PaymentService {
         String sessionId;
         if (stripeSecret != null && !stripeSecret.isBlank()) {
             try {
-                Stripe.apiKey = stripeSecret;
                 SessionCreateParams params = SessionCreateParams.builder()
                         .setMode(SessionCreateParams.Mode.PAYMENT)
                         .setSuccessUrl(successUrl)
@@ -75,7 +74,15 @@ public class PaymentService {
                                         .build())
                                 .build())
                         .build();
-                Session session = Session.create(params);
+                // One attempt, bounded. The SDK default (30s connect + 80s read, twice retried)
+                // outlives the Azure ingress timeout and the browser then sees a header-less 504.
+                RequestOptions options = RequestOptions.builder()
+                        .setApiKey(stripeSecret)
+                        .setConnectTimeout(10_000)
+                        .setReadTimeout(20_000)
+                        .setMaxNetworkRetries(0)
+                        .build();
+                Session session = Session.create(params, options);
                 checkoutUrl = session.getUrl();
                 sessionId = session.getId();
             } catch (StripeException e) {

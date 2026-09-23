@@ -7,6 +7,11 @@ spring:
   threads:
     virtual:
       enabled: true
+  http:
+    clients:
+      connect-timeout: 5s
+      # Must stay under the Azure ingress limit (240s) so a stuck checkout returns from this app, with CORS.
+      read-timeout: 90s
   cloud:
     gateway:
       server:

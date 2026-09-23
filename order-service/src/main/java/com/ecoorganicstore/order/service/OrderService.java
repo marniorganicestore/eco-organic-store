@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,8 @@ import org.springframework.web.client.RestClient;
 
 @Service
 public class OrderService {
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+
     private final OrderRepository orderRepository;
     private final RestClient restClient;
     private final String internalKey;
@@ -75,15 +79,42 @@ public class OrderService {
         order.setReservationId(String.valueOf(reserve.get("id")));
         order = orderRepository.save(order);
 
-        Map session = restClient.post().uri(paymentUrl + "/internal/payments/session")
-                .header("X-Internal-Key", internalKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("orderNumber", orderNumber, "amountPaise", total, "lineItems", lines))
-                .retrieve().body(Map.class);
+        Map session;
+        try {
+            session = restClient.post().uri(paymentUrl + "/internal/payments/session")
+                    .header("X-Internal-Key", internalKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("orderNumber", orderNumber, "amountPaise", total))
+                    .retrieve().body(Map.class);
+        } catch (RuntimeException ex) {
+            log.warn("Payment session failed for {}", orderNumber, ex);
+            abandonUnpaidCheckout(order);
+            throw new IllegalArgumentException("Payment could not be started. Nothing was charged. Please try again.");
+        }
+        if (session == null || session.get("checkoutUrl") == null || session.get("paymentId") == null) {
+            abandonUnpaidCheckout(order);
+            throw new IllegalArgumentException("Payment could not be started. Nothing was charged. Please try again.");
+        }
 
         order.setPaymentId(String.valueOf(session.get("paymentId")));
         orderRepository.save(order);
         return new CheckoutResponse(orderNumber, String.valueOf(session.get("checkoutUrl")));
+    }
+
+    private void abandonUnpaidCheckout(Order order) {
+        try {
+            restClient.post().uri(inventoryUrl + "/internal/inventory/release/" + order.getOrderNumber())
+                    .header("X-Internal-Key", internalKey)
+                    .retrieve().toBodilessEntity();
+        } catch (RuntimeException ex) {
+            log.warn("Could not release stock for unpaid order {}", order.getOrderNumber(), ex);
+        }
+        try {
+            order.setOrderStatus("CANCELLED");
+            orderRepository.save(order);
+        } catch (RuntimeException ex) {
+            log.warn("Could not cancel unpaid order {}", order.getOrderNumber(), ex);
+        }
     }
 
     public List<Order> ordersByUser(String userId) {
