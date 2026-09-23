@@ -20,7 +20,14 @@ import SecurityPage from './pages/account/SecurityPage'
 import OrdersPage from './pages/account/OrdersPage'
 import { STORE_NAME } from './lib/brand'
 import { firstName, isAdmin } from './lib/userDisplay'
-import { AdminUsersPanel } from './components/admin/AdminUsersPanel'
+import { AdminLayout } from './components/admin/AdminLayout'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import AdminCatalogPage from './pages/admin/AdminCatalogPage'
+import AdminInventoryPage from './pages/admin/AdminInventoryPage'
+import AdminOrdersPage from './pages/admin/AdminOrdersPage'
+import AdminPaymentsPage from './pages/admin/AdminPaymentsPage'
+import AdminReviewsPage from './pages/admin/AdminReviewsPage'
+import AdminPeoplePage from './pages/admin/AdminPeoplePage'
 import { storeBtn, storeBtnGhost, storeCard, storeInput, PageShell } from './components/layout/PageShell'
 
 type Product = {
@@ -155,7 +162,15 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
+        <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="catalog" element={<AdminCatalogPage />} />
+          <Route path="inventory" element={<AdminInventoryPage />} />
+          <Route path="orders" element={<AdminOrdersPage />} />
+          <Route path="payments" element={<AdminPaymentsPage />} />
+          <Route path="reviews" element={<AdminReviewsPage />} />
+          <Route path="people" element={<AdminPeoplePage />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
@@ -365,85 +380,6 @@ function OrderSuccess() {
     <PageShell title="Thank you">
       <div className={`${storeCard} p-8 text-emerald-950`}>
         Order payment completed. Thank you for choosing {STORE_NAME}.
-      </div>
-    </PageShell>
-  )
-}
-
-function Admin() {
-  const [lowStock, setLowStock] = useState<any[]>([])
-  const [payments, setPayments] = useState<any[]>([])
-  const [products, setProducts] = useState<any[]>([])
-  const [orders, setOrders] = useState<any[]>([])
-  const [hiddenReviews, setHiddenReviews] = useState<any[]>([])
-  const [adjustQty, setAdjustQty] = useState<Record<string, number>>({})
-
-  useEffect(() => {
-    api.get<any[]>('/admin/inventory/low-stock').then(setLowStock).catch(() => setLowStock([]))
-    api.get<any[]>('/admin/payments').then(setPayments).catch(() => setPayments([]))
-    api.get<any[]>('/admin/catalog/products').then(setProducts).catch(() => setProducts([]))
-    api.get<any[]>('/admin/orders').then(setOrders).catch(() => setOrders([]))
-    api.get<any[]>('/admin/reviews').then(setHiddenReviews).catch(() => setHiddenReviews([]))
-  }, [])
-
-  async function updateOrderStatus(orderNumber: string, status: string) {
-    await api.patch(`/admin/orders/${orderNumber}`, { status })
-    setOrders((prev) => prev.map((o) => o.orderNumber === orderNumber ? { ...o, orderStatus: status } : o))
-  }
-
-  async function adjustStock(productId: string) {
-    const onHand = adjustQty[productId] ?? 0
-    await api.patch(`/admin/inventory/${productId}`, { onHand })
-  }
-
-  async function reviewVisible(reviewId: string) {
-    await api.patch(`/admin/reviews/${reviewId}`, { status: 'VISIBLE' })
-    setHiddenReviews((prev) => prev.filter((r) => r.id !== reviewId))
-  }
-
-  return (
-    <PageShell title="Admin" subtitle="Inventory, payments, orders, and reviews.">
-      <div className="grid gap-4 md:grid-cols-2">
-        <AdminUsersPanel />
-        <section className={`${storeCard} p-4`}>
-          <h3 className="mb-2 font-semibold text-emerald-950">Low stock</h3>
-          {lowStock.map((s) => <p key={s.productId}>{s.productId}: {s.available}</p>)}
-        </section>
-        <section className={`${storeCard} p-4`}>
-          <h3 className="mb-2 font-semibold text-emerald-950">Payments</h3>
-          {payments.map((p) => <p key={p.id}>{p.orderNumber}: {p.status}</p>)}
-        </section>
-        <section className={`${storeCard} p-4 md:col-span-2`}>
-          <h3 className="mb-2 font-semibold text-emerald-950">Products and inventory</h3>
-          {products.map((p) => (
-            <div key={p.id} className="mb-2 flex items-center gap-2 rounded-xl border border-emerald-100 bg-white/70 p-2">
-              <span className="min-w-60 text-sm">{p.name}</span>
-              <input type="number" className={`${storeInput} w-24`} placeholder="on hand" onChange={(e) => setAdjustQty((prev) => ({ ...prev, [p.id]: Number(e.target.value) }))} />
-              <button className={storeBtn} onClick={() => adjustStock(p.id)}>Update stock</button>
-            </div>
-          ))}
-        </section>
-        <section className={`${storeCard} p-4 md:col-span-2`}>
-          <h3 className="mb-2 font-semibold text-emerald-950">Orders</h3>
-          {orders.map((o) => (
-            <div key={o.id} className="mb-2 flex items-center gap-2 rounded-xl border border-emerald-100 bg-white/70 p-2">
-              <span className="min-w-56 text-sm">{o.orderNumber}</span>
-              <span className="min-w-32 text-sm">{o.orderStatus}</span>
-              <button className={storeBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'PACKED')}>Pack</button>
-              <button className={storeBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'SHIPPED')}>Ship</button>
-              <button className={storeBtnGhost} onClick={() => updateOrderStatus(o.orderNumber, 'DELIVERED')}>Deliver</button>
-            </div>
-          ))}
-        </section>
-        <section className={`${storeCard} p-4 md:col-span-2`}>
-          <h3 className="mb-2 font-semibold text-emerald-950">Hidden reviews</h3>
-          {hiddenReviews.length === 0 ? <p className="text-sm text-slate-500">No hidden reviews.</p> : hiddenReviews.map((r) => (
-            <div key={r.id} className="mb-2 flex items-center justify-between rounded-xl border border-emerald-100 bg-white/70 p-2">
-              <p>{r.productId}: {r.body}</p>
-              <button className={storeBtn} onClick={() => reviewVisible(r.id)}>Make visible</button>
-            </div>
-          ))}
-        </section>
       </div>
     </PageShell>
   )

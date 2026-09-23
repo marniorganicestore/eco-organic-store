@@ -1,5 +1,6 @@
 package com.ecoorganicstore.order.service;
 
+import com.ecoorganicstore.order.domain.Fulfillment;
 import com.ecoorganicstore.order.domain.Order;
 import com.ecoorganicstore.order.repo.OrderRepository;
 import com.ecoorganicstore.common.web.ForbiddenException;
@@ -119,7 +120,7 @@ public class OrderService {
 
     public Order updateStatus(String orderNumber, String status) {
         Order order = orderRepository.findByOrderNumber(orderNumber).orElseThrow(() -> new IllegalArgumentException("Order not found"));
-        order.setOrderStatus(status);
+        order.setOrderStatus(Fulfillment.advance(order.getOrderStatus(), status));
         return orderRepository.save(order);
     }
 

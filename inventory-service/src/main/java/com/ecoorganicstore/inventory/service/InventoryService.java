@@ -69,6 +69,9 @@ public class InventoryService {
     }
 
     public Stock adjust(String productId, int onHand) {
+        if (onHand < 0) {
+            throw new IllegalArgumentException("On-hand quantity cannot be negative.");
+        }
         Stock stock = stockRepository.findByProductId(productId).orElseGet(Stock::new);
         stock.setProductId(productId);
         stock.setOnHand(onHand);
@@ -76,6 +79,10 @@ public class InventoryService {
             stock.setReserved(onHand);
         }
         return stockRepository.save(stock);
+    }
+
+    public List<Stock> list() {
+        return stockRepository.findAll();
     }
 
     public List<Stock> getLowStock(int threshold) {

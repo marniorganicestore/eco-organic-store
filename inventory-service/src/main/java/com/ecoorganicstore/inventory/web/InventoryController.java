@@ -5,6 +5,9 @@ import com.ecoorganicstore.inventory.domain.Reservation;
 import com.ecoorganicstore.inventory.domain.Stock;
 import com.ecoorganicstore.inventory.service.InventoryService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,10 +40,17 @@ public class InventoryController {
         return inventoryService.stockByProducts(productIds).stream().map(s -> new StockView(s.getProductId(), s.available())).toList();
     }
 
-    @PatchMapping("/api/admin/inventory/{productId}")
-    public Stock adjust(HttpServletRequest request, @PathVariable String productId, @RequestBody AdjustRequest adjustRequest) {
+    @GetMapping("/api/admin/inventory")
+    public List<AdminStockResponse> inventory(HttpServletRequest request) {
         ensureAdmin(request);
-        return inventoryService.adjust(productId, adjustRequest.onHand());
+        return inventoryService.list().stream().map(InventoryController::toAdmin).toList();
+    }
+
+    @PatchMapping("/api/admin/inventory/{productId}")
+    public AdminStockResponse adjust(HttpServletRequest request, @PathVariable String productId,
+                                     @Valid @RequestBody AdjustRequest adjustRequest) {
+        ensureAdmin(request);
+        return toAdmin(inventoryService.adjust(productId, adjustRequest.onHand()));
     }
 
     @GetMapping("/api/admin/inventory/low-stock")
@@ -49,11 +59,18 @@ public class InventoryController {
         return inventoryService.getLowStock(threshold).stream().map(s -> new StockView(s.getProductId(), s.available())).toList();
     }
 
+    private static AdminStockResponse toAdmin(Stock stock) {
+        return new AdminStockResponse(stock.getProductId(), stock.getOnHand(), stock.getReserved(), stock.available());
+    }
+
     private static void ensureAdmin(HttpServletRequest request) {
         AuthGuards.requireAdmin(request);
     }
 
     public record ReserveRequest(String orderId, List<Reservation.Line> lines) {}
-    public record AdjustRequest(int onHand) {}
+    public record AdjustRequest(
+            @NotNull(message = "Enter the on-hand quantity.")
+            @Min(value = 0, message = "On-hand quantity cannot be negative.") Integer onHand) {}
     public record StockView(String productId, int available) {}
+    public record AdminStockResponse(String productId, int onHand, int reserved, int available) {}
 }

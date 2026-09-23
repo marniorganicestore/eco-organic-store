@@ -4,9 +4,16 @@ import com.ecoorganicstore.catalog.domain.Category;
 import com.ecoorganicstore.catalog.domain.Product;
 import com.ecoorganicstore.catalog.repo.CategoryRepository;
 import com.ecoorganicstore.catalog.repo.ProductRepository;
+import com.ecoorganicstore.catalog.service.CatalogAdminService;
+import com.ecoorganicstore.catalog.web.CatalogAdminDtos.CategoryResponse;
+import com.ecoorganicstore.catalog.web.CatalogAdminDtos.CategoryWriteRequest;
+import com.ecoorganicstore.catalog.web.CatalogAdminDtos.ProductResponse;
+import com.ecoorganicstore.catalog.web.CatalogAdminDtos.ProductWriteRequest;
 import com.ecoorganicstore.common.security.AuthGuards;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,10 +21,13 @@ import org.springframework.web.bind.annotation.*;
 public class CatalogController {
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
+    private final CatalogAdminService catalogAdminService;
 
-    public CatalogController(CategoryRepository categoryRepository, ProductRepository productRepository) {
+    public CatalogController(CategoryRepository categoryRepository, ProductRepository productRepository,
+                             CatalogAdminService catalogAdminService) {
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
+        this.catalogAdminService = catalogAdminService;
     }
 
     @GetMapping("/api/categories")
@@ -57,60 +67,55 @@ public class CatalogController {
     }
 
     @PostMapping("/api/admin/catalog/products")
-    public Product createProduct(HttpServletRequest request, @RequestBody Product product) {
+    public ProductResponse createProduct(HttpServletRequest request, @Valid @RequestBody ProductWriteRequest body) {
         ensureAdmin(request);
-        return productRepository.save(product);
+        return catalogAdminService.createProduct(body);
     }
 
     @PutMapping("/api/admin/catalog/products/{id}")
-    public Product updateProduct(HttpServletRequest request, @PathVariable String id, @RequestBody Product req) {
+    public ProductResponse updateProduct(HttpServletRequest request, @PathVariable String id,
+                                         @Valid @RequestBody ProductWriteRequest body) {
         ensureAdmin(request);
-        Product p = productRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Product not found"));
-        p.setName(req.getName()); p.setDescription(req.getDescription()); p.setPricePaise(req.getPricePaise());
-        p.setImages(req.getImages()); p.setCategoryId(req.getCategoryId()); p.setOrigin(req.getOrigin());
-        p.setCertifications(req.getCertifications()); p.setUnit(req.getUnit()); p.setFeatured(req.isFeatured()); p.setActive(req.isActive());
-        return productRepository.save(p);
+        return catalogAdminService.updateProduct(id, body);
     }
 
     @DeleteMapping("/api/admin/catalog/products/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteProduct(HttpServletRequest request, @PathVariable String id) {
         ensureAdmin(request);
-        productRepository.deleteById(id);
+        catalogAdminService.deleteProduct(id);
     }
 
     @GetMapping("/api/admin/catalog/products")
-    public List<Product> adminProducts(HttpServletRequest request) {
+    public List<ProductResponse> adminProducts(HttpServletRequest request) {
         ensureAdmin(request);
-        return productRepository.findAll();
+        return catalogAdminService.products();
     }
 
     @GetMapping("/api/admin/catalog/categories")
-    public List<Category> adminCategories(HttpServletRequest request) {
+    public List<CategoryResponse> adminCategories(HttpServletRequest request) {
         ensureAdmin(request);
-        return categoryRepository.findAll();
+        return catalogAdminService.categories();
     }
 
     @PostMapping("/api/admin/catalog/categories")
-    public Category createCategory(HttpServletRequest request, @RequestBody Category category) {
+    public CategoryResponse createCategory(HttpServletRequest request, @Valid @RequestBody CategoryWriteRequest body) {
         ensureAdmin(request);
-        return categoryRepository.save(category);
+        return catalogAdminService.createCategory(body);
     }
 
     @PutMapping("/api/admin/catalog/categories/{id}")
-    public Category updateCategory(HttpServletRequest request, @PathVariable String id, @RequestBody Category requestCategory) {
+    public CategoryResponse updateCategory(HttpServletRequest request, @PathVariable String id,
+                                           @Valid @RequestBody CategoryWriteRequest body) {
         ensureAdmin(request);
-        Category category = categoryRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Category not found"));
-        category.setName(requestCategory.getName());
-        category.setSlug(requestCategory.getSlug());
-        category.setImage(requestCategory.getImage());
-        category.setSortOrder(requestCategory.getSortOrder());
-        return categoryRepository.save(category);
+        return catalogAdminService.updateCategory(id, body);
     }
 
     @DeleteMapping("/api/admin/catalog/categories/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCategory(HttpServletRequest request, @PathVariable String id) {
         ensureAdmin(request);
-        categoryRepository.deleteById(id);
+        catalogAdminService.deleteCategory(id);
     }
 
     private static void ensureAdmin(HttpServletRequest request) {

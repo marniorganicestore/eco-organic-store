@@ -3,7 +3,9 @@ package com.ecoorganicstore.review.service;
 import com.ecoorganicstore.review.domain.Review;
 import com.ecoorganicstore.review.repo.ReviewRepository;
 import com.ecoorganicstore.common.web.UnauthorizedException;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -50,16 +52,32 @@ public class ReviewService {
         return reviewRepository.findByProductIdAndStatus(productId, "VISIBLE");
     }
 
-    public List<Review> hiddenQueue() {
-        return reviewRepository.findByStatus("HIDDEN");
+    public List<Review> forAdmin(String status) {
+        List<Review> reviews = status == null || status.isBlank()
+                ? reviewRepository.findAll()
+                : reviewRepository.findByStatus(normalizeStatus(status));
+        return reviews.stream()
+                .sorted(Comparator.comparing(Review::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
     }
 
     public Review setStatus(String reviewId, String status) {
         Review review = reviewRepository.findById(reviewId).orElseThrow(() -> new IllegalArgumentException("Review not found"));
-        review.setStatus(status);
+        review.setStatus(normalizeStatus(status));
         review = reviewRepository.save(review);
         recalculate(review.getProductId());
         return review;
+    }
+
+    private static String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("Choose a review status.");
+        }
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        if (!"VISIBLE".equals(normalized) && !"HIDDEN".equals(normalized)) {
+            throw new IllegalArgumentException("Unknown review status.");
+        }
+        return normalized;
     }
 
     private void recalculate(String productId) {

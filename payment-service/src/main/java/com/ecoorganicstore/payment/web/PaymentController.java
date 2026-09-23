@@ -5,6 +5,8 @@ import com.ecoorganicstore.payment.domain.Payment;
 import com.ecoorganicstore.payment.service.PaymentService;
 import com.ecoorganicstore.payment.service.PaymentService.SessionResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,10 +31,19 @@ public class PaymentController {
     }
 
     @GetMapping("/api/admin/payments")
-    public List<Payment> payments(HttpServletRequest request) {
+    public List<PaymentView> payments(HttpServletRequest request) {
         AuthGuards.requireAdmin(request);
-        return paymentService.list();
+        return paymentService.list().stream()
+                .sorted(Comparator.comparing(Payment::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(payment -> new PaymentView(
+                        payment.getId(),
+                        payment.getOrderNumber(),
+                        payment.getAmountPaise(),
+                        payment.getStatus(),
+                        payment.getCreatedAt()))
+                .toList();
     }
 
     public record SessionRequest(String orderNumber, long amountPaise) {}
+    public record PaymentView(String id, String orderNumber, long amountPaise, String status, Instant createdAt) {}
 }

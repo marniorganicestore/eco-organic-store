@@ -5,6 +5,9 @@ import com.ecoorganicstore.common.security.UserContextResolver;
 import com.ecoorganicstore.review.domain.Review;
 import com.ecoorganicstore.review.service.ReviewService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,17 +32,39 @@ public class ReviewController {
     }
 
     @GetMapping("/api/admin/reviews")
-    public List<Review> queue(HttpServletRequest request) {
+    public List<ReviewResponse> queue(HttpServletRequest request, @RequestParam(required = false) String status) {
         AuthGuards.requireAdmin(request);
-        return reviewService.hiddenQueue();
+        return reviewService.forAdmin(status).stream().map(ReviewController::toResponse).toList();
     }
 
     @PatchMapping("/api/admin/reviews/{reviewId}")
-    public Review update(HttpServletRequest request, @PathVariable String reviewId, @RequestBody StatusRequest statusRequest) {
+    public ReviewResponse update(HttpServletRequest request, @PathVariable String reviewId,
+                                 @Valid @RequestBody StatusRequest statusRequest) {
         AuthGuards.requireAdmin(request);
-        return reviewService.setStatus(reviewId, statusRequest.status());
+        return toResponse(reviewService.setStatus(reviewId, statusRequest.status()));
+    }
+
+    private static ReviewResponse toResponse(Review review) {
+        return new ReviewResponse(
+                review.getId(),
+                review.getUserId(),
+                review.getProductId(),
+                review.getRating(),
+                review.getBody(),
+                review.isVerifiedPurchase(),
+                review.getStatus(),
+                review.getCreatedAt());
     }
 
     public record ReviewRequest(String productId, int rating, String body) {}
-    public record StatusRequest(String status) {}
+    public record StatusRequest(@NotBlank(message = "Choose a review status.") String status) {}
+    public record ReviewResponse(
+            String id,
+            String userId,
+            String productId,
+            int rating,
+            String body,
+            boolean verifiedPurchase,
+            String status,
+            Instant createdAt) {}
 }

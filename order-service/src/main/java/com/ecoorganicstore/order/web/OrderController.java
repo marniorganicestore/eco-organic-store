@@ -5,6 +5,9 @@ import com.ecoorganicstore.common.security.UserContextResolver;
 import com.ecoorganicstore.order.domain.Order;
 import com.ecoorganicstore.order.service.OrderService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,18 +49,46 @@ public class OrderController {
     }
 
     @GetMapping("/api/admin/orders")
-    public List<Order> adminOrders(HttpServletRequest request) {
+    public List<AdminOrderResponse> adminOrders(HttpServletRequest request) {
         AuthGuards.requireAdmin(request);
-        return orderService.allOrders();
+        return orderService.allOrders().stream().map(OrderController::toAdmin).toList();
     }
 
     @PatchMapping("/api/admin/orders/{orderNumber}")
-    public Order adminUpdate(HttpServletRequest request, @PathVariable String orderNumber, @RequestBody StatusRequest statusRequest) {
+    public AdminOrderResponse adminUpdate(HttpServletRequest request, @PathVariable String orderNumber,
+                                          @Valid @RequestBody StatusRequest statusRequest) {
         AuthGuards.requireAdmin(request);
-        return orderService.updateStatus(orderNumber, statusRequest.status());
+        return toAdmin(orderService.updateStatus(orderNumber, statusRequest.status()));
+    }
+
+    private static AdminOrderResponse toAdmin(Order order) {
+        List<LineResponse> lines = order.getLines() == null
+                ? List.of()
+                : order.getLines().stream()
+                        .map(line -> new LineResponse(line.productId(), line.productName(), line.pricePaise(), line.qty()))
+                        .toList();
+        return new AdminOrderResponse(
+                order.getId(),
+                order.getOrderNumber(),
+                order.getUserId(),
+                lines,
+                order.getShippingAddress(),
+                order.getTotalPaise(),
+                order.getOrderStatus(),
+                order.getCreatedAt());
     }
 
     public record CheckoutRequest(String shippingAddress) {}
     public record PurchaseResponse(boolean purchased) {}
-    public record StatusRequest(String status) {}
+    public record StatusRequest(@NotBlank(message = "Choose the next order status.") String status) {}
+    public record LineResponse(String productId, String productName, long pricePaise, int qty) {}
+    public record AdminOrderResponse(
+            String id,
+            String orderNumber,
+            String userId,
+            List<LineResponse> lines,
+            String shippingAddress,
+            long totalPaise,
+            String orderStatus,
+            Instant createdAt) {}
 }

@@ -37,11 +37,8 @@ export function AdminUsersPanel() {
   }
 
   return (
-    <section className={`${storeCard} p-4 md:col-span-2`}>
-      <h3 className="font-semibold text-emerald-950">People</h3>
-      <p className="mt-1 max-w-2xl text-sm text-slate-600">
-        Registration always creates a customer. Grant admin here when someone should run the store. Admins can still shop.
-      </p>
+    <section className={`${storeCard} p-4`}>
+      <p className="max-w-2xl text-sm text-slate-600">Admins can still shop. You cannot remove your own admin access or disable your own account.</p>
       {error ? <div className="mt-3"><FormBanner tone="error">{error}</FormBanner></div> : null}
       {accounts.isPending ? (
         <div className="mt-4 space-y-3" aria-busy="true">
