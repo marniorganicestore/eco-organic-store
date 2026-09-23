@@ -32,7 +32,9 @@ export function PasswordField({
         <input
           id={id}
           name={id}
-          className="w-full rounded-lg border border-emerald-100 p-2.5 pr-20 outline-none focus:ring-2 focus:ring-emerald-700"
+          className={`w-full rounded-lg border p-2.5 pr-20 outline-none focus:ring-2 focus:ring-emerald-700 ${
+            invalid ? 'border-orange-300' : 'border-emerald-100'
+          }`}
           type={visible ? 'text' : 'password'}
           value={value}
           autoComplete={autoComplete}

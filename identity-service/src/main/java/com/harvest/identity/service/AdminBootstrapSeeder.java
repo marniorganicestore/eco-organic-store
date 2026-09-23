@@ -1,9 +1,12 @@
 package com.harvest.identity.service;
 
+import com.harvest.common.security.Roles;
+import com.harvest.identity.domain.AccountRoles;
 import com.harvest.identity.domain.User;
 import com.harvest.identity.repo.UserRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,17 +38,15 @@ public class AdminBootstrapSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        User admin = userRepository.findByEmail(adminEmail.toLowerCase()).orElseGet(User::new);
-        admin.setEmail(adminEmail.toLowerCase());
+        User admin = userRepository.findByEmail(adminEmail.trim().toLowerCase(Locale.ROOT)).orElseGet(User::new);
+        admin.setEmail(adminEmail.trim().toLowerCase(Locale.ROOT));
         admin.setName(adminName);
         List<String> roles = admin.getRoles() == null ? new ArrayList<>() : new ArrayList<>(admin.getRoles());
-        if (!roles.contains("ADMIN")) {
-            roles.add("ADMIN");
+        if (!AccountRoles.isAdmin(roles)) {
+            roles.add(Roles.ADMIN);
         }
-        if (!roles.contains("CUSTOMER")) {
-            roles.add("CUSTOMER");
-        }
-        admin.setRoles(roles);
+        admin.setRoles(AccountRoles.forToken(roles));
+        admin.setEnabled(true);
         if (adminPasswordHash != null && !adminPasswordHash.isBlank()) {
             admin.setPasswordHash(adminPasswordHash);
         } else if (adminPassword != null && !adminPassword.isBlank()) {

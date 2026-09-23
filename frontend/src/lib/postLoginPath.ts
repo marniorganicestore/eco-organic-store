@@ -1,10 +1,12 @@
+import { isAdmin } from './userDisplay'
+
 const AUTH_PATHS = new Set(['/login', '/register', '/forgot-password'])
 
 export function postLoginPath(from: unknown, roles: string[]): string {
   if (typeof from === 'string' && isSafeInternalPath(from)) {
     return from
   }
-  return roles.includes('ADMIN') ? '/admin' : '/shop'
+  return isAdmin(roles) ? '/admin' : '/shop'
 }
 
 function isSafeInternalPath(path: string): boolean {

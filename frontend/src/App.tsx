@@ -18,7 +18,8 @@ import ProfilePage from './pages/account/ProfilePage'
 import AddressesPage from './pages/account/AddressesPage'
 import SecurityPage from './pages/account/SecurityPage'
 import OrdersPage from './pages/account/OrdersPage'
-import { firstName } from './lib/userDisplay'
+import { firstName, isAdmin } from './lib/userDisplay'
+import { AdminUsersPanel } from './components/admin/AdminUsersPanel'
 import { harvestBtn, harvestBtnGhost, harvestCard, harvestInput, PageShell } from './components/layout/PageShell'
 
 type Product = {
@@ -44,7 +45,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((state) => state.user)
   const { items } = useCartStore()
   const qty = items.reduce((sum, i) => sum + i.qty, 0)
-  const isAdmin = user?.roles.includes('ADMIN') ?? false
+  const showAdmin = isAdmin(user?.roles)
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -87,7 +88,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <nav className="flex items-center gap-4 text-sm">
             <Link className={navClass('/shop')} to="/shop">Shop</Link>
             <Link className={navClass('/account/orders')} to="/account/orders">Orders</Link>
-            {isAdmin ? <Link className={navClass('/admin')} to="/admin">Admin</Link> : null}
+            {showAdmin ? <Link className={navClass('/admin')} to="/admin">Admin</Link> : null}
             <Link className={navClass('/cart')} to="/cart">Cart ({qty})</Link>
             {user ? (
               <div className="flex items-center gap-2">
@@ -99,6 +100,11 @@ function Layout({ children }: { children: React.ReactNode }) {
                   <UserAvatar name={user.name || user.email} avatar={user.avatar} />
                   <span className="hidden max-w-28 truncate text-emerald-900 sm:inline">{firstName(user.name || user.email)}</span>
                 </Link>
+                {showAdmin ? (
+                  <span className="hidden rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900 sm:inline">
+                    Admin
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   className={harvestBtnGhost}
@@ -397,6 +403,7 @@ function Admin() {
   return (
     <PageShell title="Admin" subtitle="Inventory, payments, orders, and reviews.">
       <div className="grid gap-4 md:grid-cols-2">
+        <AdminUsersPanel />
         <section className={`${harvestCard} p-4`}>
           <h3 className="mb-2 font-semibold text-emerald-950">Low stock</h3>
           {lowStock.map((s) => <p key={s.productId}>{s.productId}: {s.available}</p>)}

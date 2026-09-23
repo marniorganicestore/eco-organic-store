@@ -18,6 +18,8 @@ public class User {
     private String passwordHash;
     private String googleSub;
     private List<String> roles = new ArrayList<>(List.of("CUSTOMER"));
+    /** Null means enabled so documents created before this flag still sign in. */
+    private Boolean enabled;
     private List<Address> addresses = new ArrayList<>();
     private int refreshTokenVersion = 0;
 
@@ -37,6 +39,8 @@ public class User {
     public void setGoogleSub(String googleSub) { this.googleSub = googleSub; }
     public List<String> getRoles() { return roles; }
     public void setRoles(List<String> roles) { this.roles = roles; }
+    public boolean isEnabled() { return !Boolean.FALSE.equals(enabled); }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public List<Address> getAddresses() {
         if (addresses == null) {
             addresses = new ArrayList<>();

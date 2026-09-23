@@ -1,6 +1,5 @@
 package com.harvest.identity.web;
 
-import com.harvest.common.security.AuthGuards;
 import com.harvest.identity.service.AuthService;
 import com.harvest.identity.service.GoogleIdTokenVerifierService;
 import com.harvest.identity.web.AuthDtos.AuthResponse;
@@ -10,13 +9,10 @@ import com.harvest.identity.web.AuthDtos.LoginRequest;
 import com.harvest.identity.web.AuthDtos.MessageResponse;
 import com.harvest.identity.web.AuthDtos.RegisterRequest;
 import com.harvest.identity.web.AuthDtos.RequestResetRequest;
-import com.harvest.identity.web.AuthDtos.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -59,12 +55,6 @@ public class AuthController {
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(request, response);
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/api/admin/users")
-    public List<UserResponse> users(HttpServletRequest request) {
-        AuthGuards.requireAdmin(request);
-        return authService.allUsers().stream().map(ProfileMapper::toUser).toList();
     }
 
     @PostMapping("/api/auth/request-reset")

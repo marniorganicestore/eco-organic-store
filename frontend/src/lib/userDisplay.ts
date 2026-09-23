@@ -10,8 +10,15 @@ export function initials(name: string): string {
   return `${parts[0].slice(0, 1)}${parts[1].slice(0, 1)}`.toUpperCase()
 }
 
+export const CUSTOMER_ROLE = 'CUSTOMER'
+export const ADMIN_ROLE = 'ADMIN'
+
+export function isAdmin(roles: string[] | undefined): boolean {
+  return roles?.includes(ADMIN_ROLE) ?? false
+}
+
 export function roleLabel(role: string): string {
-  if (role === 'ADMIN') return 'Admin'
-  if (role === 'CUSTOMER') return 'Customer'
+  if (role === ADMIN_ROLE) return 'Admin'
+  if (role === CUSTOMER_ROLE) return 'Customer'
   return role
 }

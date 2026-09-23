@@ -5,11 +5,20 @@ type AuthShellProps = {
   subtitle: string
   children: ReactNode
   wide?: boolean
+  asideTitle?: string
+  asideBody?: string
 }
 
 const AUTH_SCENE_SRC = '/images/login-harvest.png'
 
-export function AuthShell({ title, subtitle, children, wide = false }: AuthShellProps) {
+export function AuthShell({
+  title,
+  subtitle,
+  children,
+  wide = false,
+  asideTitle = 'Organic food, directly from trusted farms.',
+  asideBody = 'Sign in to checkout faster, follow orders, and keep your cart as you move between devices.'
+}: AuthShellProps) {
   return (
     <div className="relative isolate min-h-[calc(100vh-4.75rem)] overflow-hidden">
       <img
@@ -30,10 +39,10 @@ export function AuthShell({ title, subtitle, children, wide = false }: AuthShell
         <div className="hidden max-w-lg text-white lg:block">
           <p className="text-xs font-medium uppercase tracking-[0.28em] text-emerald-100/90">Harvest &amp; Co.</p>
           <h1 className="mt-4 text-4xl font-semibold leading-tight text-white drop-shadow-sm">
-            Organic food, directly from trusted farms.
+            {asideTitle}
           </h1>
           <p className="mt-4 max-w-md text-base leading-7 text-emerald-50/90">
-            Sign in to checkout faster, follow orders, and keep your cart as you move between devices.
+            {asideBody}
           </p>
         </div>
         <div className={`mx-auto w-full rounded-2xl border border-white/50 bg-[#f8f6f1]/95 p-6 shadow-[0_24px_80px_rgba(6,46,28,0.35)] backdrop-blur-md sm:p-8 ${

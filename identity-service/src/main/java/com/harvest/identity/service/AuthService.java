@@ -2,6 +2,7 @@ package com.harvest.identity.service;
 
 import com.harvest.common.security.JwtService;
 import com.harvest.common.web.UnauthorizedException;
+import com.harvest.identity.domain.AccountRoles;
 import com.harvest.identity.domain.User;
 import com.harvest.identity.repo.UserRepository;
 import com.harvest.identity.web.AuthDtos.AuthResponse;
@@ -17,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,19 +53,22 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request, HttpServletResponse response) {
-        userRepository.findByEmail(request.email().toLowerCase()).ifPresent(u -> {
-            throw new IllegalArgumentException("Email already exists");
+        String email = normalizeEmail(request.email());
+        userRepository.findByEmail(email).ifPresent(u -> {
+            throw new IllegalArgumentException("An account with this email already exists.");
         });
         User user = new User();
-        user.setEmail(request.email().toLowerCase());
-        user.setName(request.name());
+        user.setEmail(email);
+        user.setName(normalizeName(request.name()));
         user.setPasswordHash(encoder.encode(request.password()));
+        user.setRoles(AccountRoles.customer());
+        user.setEnabled(true);
         user = userRepository.save(user);
         return issueTokens(user, response);
     }
 
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
-        String email = request.email().trim().toLowerCase();
+        String email = normalizeEmail(request.email());
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null || user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
             encoder.matches(request.password(), dummyPasswordHash());
@@ -72,24 +77,34 @@ public class AuthService {
         if (!encoder.matches(request.password(), user.getPasswordHash())) {
             throw new UnauthorizedException("Invalid email or password");
         }
+        if (!user.isEnabled()) {
+            throw new UnauthorizedException("This account is disabled. Contact the store.");
+        }
         return issueTokens(user, response);
     }
 
     public AuthResponse googleLogin(String email, String name, String sub, String picture, HttpServletResponse response) {
-        User user = userRepository.findByEmail(email.toLowerCase()).orElseGet(User::new);
-        user.setEmail(email.toLowerCase());
+        String normalizedEmail = normalizeEmail(email);
+        User user = userRepository.findByEmail(normalizedEmail).orElse(null);
+        if (user != null && !user.isEnabled()) {
+            throw new UnauthorizedException("This account is disabled. Contact the store.");
+        }
+        boolean created = user == null;
+        if (created) {
+            user = new User();
+            user.setEnabled(true);
+        }
+        user.setEmail(normalizedEmail);
         if (name != null && !name.isBlank()) {
-            user.setName(name);
+            user.setName(name.trim());
         } else if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(email);
+            user.setName(normalizedEmail);
         }
         user.setGoogleSub(sub);
         if (picture != null && !picture.isBlank()) {
             user.setAvatar(picture);
         }
-        if (user.getRoles() == null || user.getRoles().isEmpty()) {
-            user.setRoles(List.of("CUSTOMER"));
-        }
+        user.setRoles(AccountRoles.forToken(user.getRoles()));
         user = userRepository.save(user);
         return issueTokens(user, response);
     }
@@ -127,10 +142,6 @@ public class AuthService {
         user.setRefreshTokenVersion(user.getRefreshTokenVersion() + 1);
         userRepository.save(user);
         return issueTokens(user, response);
-    }
-
-    public List<User> allUsers() {
-        return userRepository.findAll();
     }
 
     public MessageResponse requestPasswordReset(RequestResetRequest request) {
@@ -173,6 +184,9 @@ public class AuthService {
         if (jwtService.refreshVersion(claims) != user.getRefreshTokenVersion()) {
             throw new UnauthorizedException("Session expired");
         }
+        if (!user.isEnabled()) {
+            throw new UnauthorizedException("This account is disabled. Contact the store.");
+        }
         return user;
     }
 
@@ -193,11 +207,28 @@ public class AuthService {
     }
 
     private AuthResponse issueTokens(User user, HttpServletResponse response) {
-        String access = jwtService.createAccessToken(user.getId(), user.getEmail(), user.getRoles(), 900);
+        List<String> roles = AccountRoles.forToken(user.getRoles());
+        if (!roles.equals(user.getRoles())) {
+            user.setRoles(roles);
+            userRepository.save(user);
+        }
+        String access = jwtService.createAccessToken(user.getId(), user.getEmail(), roles, 900);
         String refresh = jwtService.createRefreshToken(
-                user.getId(), user.getEmail(), user.getRoles(), (int) REFRESH_TTL.toSeconds(), user.getRefreshTokenVersion());
+                user.getId(), user.getEmail(), roles, (int) REFRESH_TTL.toSeconds(), user.getRefreshTokenVersion());
         response.addHeader("Set-Cookie", refreshCookie(refresh, REFRESH_TTL).toString());
-        return new AuthResponse(access, user.getId(), user.getEmail(), user.getName(), user.getRoles(), user.getAvatar());
+        return new AuthResponse(access, user.getId(), user.getEmail(), user.getName(), roles, user.getAvatar());
+    }
+
+    private static String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String normalizeName(String name) {
+        String normalized = name.trim().replaceAll("\\s+", " ");
+        if (normalized.length() < 2 || normalized.length() > 80) {
+            throw new IllegalArgumentException("Name must be 2–80 characters.");
+        }
+        return normalized;
     }
 
     private String dummyPasswordHash() {

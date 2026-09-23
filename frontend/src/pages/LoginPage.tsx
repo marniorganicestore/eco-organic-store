@@ -12,6 +12,9 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function loginErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.status === 401 && /disabled/i.test(error.message)) {
+      return 'This account is disabled. Contact the store.'
+    }
     if (error.status === 401) return 'Invalid email or password.'
     if (error.status === 400) return 'Check your email and password and try again.'
     return error.message
@@ -73,16 +76,24 @@ export default function LoginPage() {
       const profile = await authApi.google(idToken)
       await finishLogin(profile)
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 401
-        ? 'Google sign-in failed. Try again or use your email and password.'
-        : loginErrorMessage(err))
+      const disabled = err instanceof ApiError && err.status === 401 && /disabled/i.test(err.message)
+      setError(disabled
+        ? 'This account is disabled. Contact the store.'
+        : err instanceof ApiError && err.status === 401
+          ? 'Google sign-in failed. Try again or use your email and password.'
+          : loginErrorMessage(err))
     } finally {
       setPending(false)
     }
   }
 
   return (
-    <AuthShell title="Welcome back" subtitle="Login to manage orders and checkout faster.">
+    <AuthShell
+      title="Welcome back"
+      subtitle="Customers return to the shop. Admins open the store desk."
+      asideTitle="One sign-in for shoppers and the store."
+      asideBody="Use the same email and password either way. New accounts start as customers. Admin access is granted from the store desk."
+    >
       {error ? (
         <p id="login-error" role="alert" className="mb-4 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">
           {error}
@@ -94,7 +105,9 @@ export default function LoginPage() {
           <input
             id="email"
             name="email"
-            className="mt-1 w-full rounded-lg border border-emerald-100 p-2.5 outline-none focus:ring-2 focus:ring-emerald-700"
+            className={`mt-1 w-full rounded-lg border p-2.5 outline-none focus:ring-2 focus:ring-emerald-700 ${
+              fieldError === 'email' ? 'border-orange-300' : 'border-emerald-100'
+            }`}
             type="email"
             inputMode="email"
             autoComplete="username"
@@ -121,7 +134,7 @@ export default function LoginPage() {
           </Link>
         </div>
         <button
-          className="w-full rounded-lg bg-emerald-700 px-4 py-2.5 font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+          className="w-full rounded-lg bg-emerald-700 px-4 py-2.5 font-medium text-white outline-none hover:bg-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:opacity-50"
           disabled={pending}
           aria-busy={pending}
           type="submit"

@@ -1,13 +1,10 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+import { isAdmin } from '../../lib/userDisplay'
 import type { ReactNode } from 'react'
 
 type Props = {
   children: ReactNode
-}
-
-function isAdmin(roles: string[]): boolean {
-  return roles.includes('ADMIN')
 }
 
 export function RequireAuth({ children }: Props) {

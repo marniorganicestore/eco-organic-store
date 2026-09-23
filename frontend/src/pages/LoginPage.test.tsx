@@ -11,6 +11,7 @@ function renderLogin(from?: string) {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/shop" element={<p>Shop Page</p>} />
         <Route path="/checkout" element={<p>Checkout Page</p>} />
+        <Route path="/admin" element={<p>Admin desk</p>} />
       </Routes>
     </MemoryRouter>
   )
@@ -92,5 +93,40 @@ describe('LoginPage', () => {
     expect(screen.getByRole('alert').textContent).toContain('Invalid email or password.')
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe('/api/auth/login')
+  })
+
+  it('explains a disabled account and sends admins to the store desk', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: 'This account is disabled. Contact the store.' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      }))
+      .mockImplementation(async (url: string) => {
+        if (String(url).includes('/auth/login')) {
+          return new Response(JSON.stringify({
+            accessToken: 'jwt',
+            userId: 'admin-1',
+            email: 'admin@harvest.co',
+            name: 'Harvest Admin',
+            roles: ['CUSTOMER', 'ADMIN'],
+            avatar: null
+          }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+        }
+        return new Response(JSON.stringify({ items: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderLogin()
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'admin@harvest.co' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toContain('This account is disabled. Contact the store.')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(await screen.findByText('Admin desk')).toBeTruthy()
   })
 })

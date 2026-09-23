@@ -7,7 +7,9 @@ import com.harvest.identity.repo.UserRepository;
 import com.harvest.identity.web.AuthDtos.ChangePasswordRequest;
 import com.harvest.identity.web.AuthDtos.ConfirmResetRequest;
 import com.harvest.identity.web.AuthDtos.LoginRequest;
+import com.harvest.identity.web.AuthDtos.RegisterRequest;
 import com.harvest.identity.web.AuthDtos.RequestResetRequest;
+import org.mockito.ArgumentCaptor;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.Optional;
@@ -253,6 +255,100 @@ class AuthServiceTest {
                 () -> authService.changePassword("u-1", new ChangePasswordRequest("wrong-password", "new-password-1"), new MockHttpServletResponse()));
         assertEquals("Current password is incorrect.", wrongCurrent.getMessage());
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void registerCreatesAnEnabledCustomerAndRejectsADuplicateEmail() {
+        UserRepository userRepository = mock(UserRepository.class);
+        PasswordEncoder encoder = mock(PasswordEncoder.class);
+        JwtService jwtService = mock(JwtService.class);
+        AuthService authService = new AuthService(userRepository, encoder, jwtService, false, "Lax");
+        when(userRepository.findByEmail("ada@harvest.co")).thenReturn(Optional.empty());
+        when(encoder.encode("secret123")).thenReturn("hash");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            saved.setId("u-new");
+            return saved;
+        });
+        when(jwtService.createAccessToken(eq("u-new"), eq("ada@harvest.co"), eq(List.of("CUSTOMER")), anyLong()))
+                .thenReturn("jwt-token");
+        when(jwtService.createRefreshToken(eq("u-new"), eq("ada@harvest.co"), eq(List.of("CUSTOMER")), anyLong(), eq(0)))
+                .thenReturn("refresh-token");
+
+        var result = authService.register(
+                new RegisterRequest("  Ada   Lovelace  ", "Ada@Harvest.co", "secret123"), new MockHttpServletResponse());
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(saved.capture());
+        assertEquals(List.of("CUSTOMER"), saved.getValue().getRoles());
+        assertTrue(saved.getValue().isEnabled());
+        assertEquals("Ada Lovelace", result.name());
+        assertEquals("ada@harvest.co", result.email());
+        assertEquals(List.of("CUSTOMER"), result.roles());
+
+        when(userRepository.findByEmail("ada@harvest.co")).thenReturn(Optional.of(saved.getValue()));
+        IllegalArgumentException duplicate = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.register(
+                        new RegisterRequest("Ada Lovelace", "ada@harvest.co", "secret123"), new MockHttpServletResponse()));
+        assertEquals("An account with this email already exists.", duplicate.getMessage());
+    }
+
+    @Test
+    void loginRejectsADisabledAccountOnlyAfterThePasswordMatches() {
+        UserRepository userRepository = mock(UserRepository.class);
+        PasswordEncoder encoder = mock(PasswordEncoder.class);
+        AuthService authService = new AuthService(userRepository, encoder, mock(JwtService.class), false, "Lax");
+        User user = customer("u-1", 0);
+        user.setPasswordHash("hash");
+        user.setEnabled(false);
+        when(userRepository.findByEmail("user@harvest.co")).thenReturn(Optional.of(user));
+        when(encoder.matches("wrongpass", "hash")).thenReturn(false);
+        when(encoder.matches("secret123", "hash")).thenReturn(true);
+
+        UnauthorizedException wrongPassword = assertThrows(
+                UnauthorizedException.class,
+                () -> authService.login(new LoginRequest("user@harvest.co", "wrongpass"), new MockHttpServletResponse()));
+        assertEquals("Invalid email or password", wrongPassword.getMessage());
+
+        UnauthorizedException disabled = assertThrows(
+                UnauthorizedException.class,
+                () -> authService.login(new LoginRequest("user@harvest.co", "secret123"), new MockHttpServletResponse()));
+        assertEquals("This account is disabled. Contact the store.", disabled.getMessage());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void googleLoginRejectsADisabledAccount() {
+        UserRepository userRepository = mock(UserRepository.class);
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), mock(JwtService.class), false, "Lax");
+        User user = customer("u-1", 0);
+        user.setEnabled(false);
+        when(userRepository.findByEmail("user@harvest.co")).thenReturn(Optional.of(user));
+
+        UnauthorizedException disabled = assertThrows(
+                UnauthorizedException.class,
+                () -> authService.googleLogin("user@harvest.co", "User", "sub-1", null, new MockHttpServletResponse()));
+        assertEquals("This account is disabled. Contact the store.", disabled.getMessage());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void refreshRejectsADisabledAccount() {
+        UserRepository userRepository = mock(UserRepository.class);
+        JwtService jwtService = new JwtService(SECRET);
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax");
+        User user = customer("u-1", 2);
+        user.setEnabled(false);
+        String refresh = jwtService.createRefreshToken("u-1", "user@harvest.co", List.of("CUSTOMER"), 3600, 2);
+        when(userRepository.findById("u-1")).thenReturn(Optional.of(user));
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new Cookie(AuthService.REFRESH_COOKIE, refresh));
+        UnauthorizedException disabled = assertThrows(
+                UnauthorizedException.class,
+                () -> authService.refresh(request, new MockHttpServletResponse()));
+        assertEquals("This account is disabled. Contact the store.", disabled.getMessage());
     }
 
     @Test
