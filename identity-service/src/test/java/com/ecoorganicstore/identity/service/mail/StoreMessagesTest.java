@@ -29,6 +29,7 @@ class StoreMessagesTest {
         assertTrue(mail.text().contains("₹179.00"));
         assertTrue(mail.html().contains("Ada &lt;script&gt;"));
         assertFalse(mail.html().contains("<script>"));
+        assertTrue(mail.html().contains("https://eco-organic-store.com/brand/logo-email.png"));
         assertTrue(mail.html().contains("admin@eco-organic-store.com"));
     }
 

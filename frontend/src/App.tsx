@@ -25,7 +25,7 @@ import AddressesPage from './pages/account/AddressesPage'
 import SecurityPage from './pages/account/SecurityPage'
 import OrdersPage from './pages/account/OrdersPage'
 import NotificationsPage from './pages/account/NotificationsPage'
-import { STORE_NAME } from './lib/brand'
+import { BrandMark } from './components/brand/BrandMark'
 import { firstName, isAdmin } from './lib/userDisplay'
 import { AdminLayout } from './components/admin/AdminLayout'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
@@ -99,9 +99,14 @@ function Layout({ children }: { children: React.ReactNode }) {
         </>
       )}
       <header className="sticky top-0 z-20 border-b border-white/25 bg-[#f8f6f1]/78 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
-          <Link to="/" className="text-2xl font-semibold text-emerald-900">{STORE_NAME}</Link>
-          <nav className="flex items-center gap-4 text-sm">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
+          <Link
+            to="/"
+            className="inline-flex shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
+          >
+            <BrandMark className="h-10 w-auto sm:h-12" priority />
+          </Link>
+          <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-sm">
             <Link className={navClass('/shop')} to="/shop">Shop</Link>
             <Link className={navClass('/account/orders')} to="/account/orders">Orders</Link>
             {showAdmin ? <Link className={navClass('/admin')} to="/admin">Admin</Link> : null}
@@ -143,6 +148,14 @@ function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className={isScenePage ? 'relative' : 'relative mx-auto max-w-6xl px-4 py-8'}>{children}</main>
+      {isScenePage ? null : (
+        <footer className="relative border-t border-emerald-950/10">
+          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-4 py-8 sm:flex-row sm:items-center">
+            <BrandMark className="h-9 w-auto" alt="" />
+            <p className="text-sm text-emerald-950/70">Organic food from trusted farms.</p>
+          </div>
+        </footer>
+      )}
       <CartNotice />
     </div>
   )
@@ -361,6 +374,7 @@ function OrderSuccess() {
   return (
     <PageShell title="Thank you" subtitle="Payment is complete.">
       <div className={`${storeCard} max-w-xl space-y-4 p-8 text-emerald-950`}>
+        <BrandMark className="h-14 w-auto" alt="" />
         <h2 className="text-xl font-semibold">Your order is confirmed</h2>
         <p className="text-sm text-slate-600">
           A receipt is on its way from admin@eco-organic-store.com when order emails are on. You can follow packing and delivery from your orders.

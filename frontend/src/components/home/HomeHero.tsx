@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { STORE_NAME } from '../../lib/brand'
+import { BrandPlate } from '../brand/BrandMark'
 import { useAuthStore } from '../../store/authStore'
 
 const HOME_SCENE_SRC = '/images/home-hero.png'
@@ -23,8 +23,8 @@ export function HomeHero() {
       <div className="absolute inset-x-0 bottom-0 h-36 bg-linear-to-t from-emerald-950/55 to-transparent" />
       <div className="relative mx-auto flex min-h-[calc(100vh-4.75rem)] max-w-6xl items-center px-4 py-16">
         <div className="max-w-xl text-white">
-          <p className="text-xs font-medium uppercase tracking-[0.28em] text-emerald-100/90">{STORE_NAME}</p>
-          <h1 className="mt-4 text-4xl font-semibold leading-tight drop-shadow-sm sm:text-5xl">
+          <BrandPlate imgClassName="h-[4.25rem] w-auto sm:h-20" />
+          <h1 className="mt-6 text-4xl font-semibold leading-tight drop-shadow-sm sm:text-5xl">
             Organic food, directly from trusted farms.
           </h1>
           <p className="mt-4 max-w-md text-base leading-7 text-emerald-50/90">

@@ -180,16 +180,17 @@ public final class StoreMessages {
     }
 
     private String page(String greeting, String body) {
+        String logo = storefrontUrl + "/brand/logo-email.png";
         return """
-                <div style="margin:0;padding:24px;background:#f8f6f1;font-family:Georgia,serif;color:#064e3b;">
-                  <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #d1fae5;border-radius:16px;padding:28px;">
-                    <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#047857;">%s</p>
-                    <h1 style="margin:0 0 16px;font-size:24px;font-weight:600;">%s</h1>
-                    <div style="font-family:Segoe UI,sans-serif;font-size:15px;line-height:1.5;color:#1e293b;">%s</div>
-                    <p style="margin:24px 0 0;font-family:Segoe UI,sans-serif;font-size:13px;color:#64748b;">%s<br>%s</p>
+                <div style="margin:0;padding:32px 16px;background:#f3efe6;font-family:Georgia,'Times New Roman',serif;color:#243528;">
+                  <div style="max-width:560px;margin:0 auto;background:#faf4e8;border:1px solid #e7e0d2;border-radius:20px;padding:32px 28px;">
+                    <img src="%s" alt="%s" width="248" height="88" style="display:block;width:248px;height:auto;border:0;margin:0 0 22px;" />
+                    <h1 style="margin:0 0 16px;font-size:26px;font-weight:600;letter-spacing:-0.02em;color:#243528;">%s</h1>
+                    <div style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1e293b;">%s</div>
+                    <p style="margin:28px 0 0;padding-top:16px;border-top:1px solid #e7e0d2;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#64748b;">%s<br>%s</p>
                   </div>
                 </div>
-                """.formatted(esc(storeName), esc(greeting), body, esc(storeName), esc(fromAddress));
+                """.formatted(esc(logo), esc(storeName), esc(greeting), body, esc(storeName), esc(fromAddress));
     }
 
     private String button(String href, String label) {

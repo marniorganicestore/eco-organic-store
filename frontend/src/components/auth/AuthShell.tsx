@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { STORE_NAME } from '../../lib/brand'
+import { BrandMark, BrandPlate } from '../brand/BrandMark'
 
 type AuthShellProps = {
   title: string
@@ -38,8 +38,8 @@ export function AuthShell({
         wide ? 'lg:grid-cols-[1fr_minmax(22rem,34rem)]' : 'lg:grid-cols-[1fr_26rem]'
       }`}>
         <div className="hidden max-w-lg text-white lg:block">
-          <p className="text-xs font-medium uppercase tracking-[0.28em] text-emerald-100/90">{STORE_NAME}</p>
-          <h1 className="mt-4 text-4xl font-semibold leading-tight text-white drop-shadow-sm">
+          <BrandPlate imgClassName="h-[4.25rem] w-auto" />
+          <h1 className="mt-6 text-4xl font-semibold leading-tight text-white drop-shadow-sm">
             {asideTitle}
           </h1>
           <p className="mt-4 max-w-md text-base leading-7 text-emerald-50/90">
@@ -49,7 +49,7 @@ export function AuthShell({
         <div className={`mx-auto w-full rounded-2xl border border-white/50 bg-[#f8f6f1]/95 p-6 shadow-[0_24px_80px_rgba(6,46,28,0.35)] backdrop-blur-md sm:p-8 ${
           wide ? 'max-w-lg' : 'max-w-md'
         }`}>
-          <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-emerald-700 lg:hidden">{STORE_NAME}</p>
+          <BrandMark className="mb-4 h-12 w-auto lg:hidden" />
           <h2 className="text-2xl font-semibold text-emerald-900">{title}</h2>
           <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
           <div className="mt-6">{children}</div>

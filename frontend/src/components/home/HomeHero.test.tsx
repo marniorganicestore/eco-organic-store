@@ -17,6 +17,7 @@ describe('HomeHero', () => {
       </MemoryRouter>
     )
 
+    expect(screen.getByRole('img', { name: 'Marni eco organic store' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: /Organic food, directly from trusted farms/i })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Shop now' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeTruthy()
