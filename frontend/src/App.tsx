@@ -18,6 +18,7 @@ import ProfilePage from './pages/account/ProfilePage'
 import AddressesPage from './pages/account/AddressesPage'
 import SecurityPage from './pages/account/SecurityPage'
 import OrdersPage from './pages/account/OrdersPage'
+import { STORE_NAME } from './lib/brand'
 import { firstName, isAdmin } from './lib/userDisplay'
 import { AdminUsersPanel } from './components/admin/AdminUsersPanel'
 import { storeBtn, storeBtnGhost, storeCard, storeInput, PageShell } from './components/layout/PageShell'
@@ -84,7 +85,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       )}
       <header className="sticky top-0 z-20 border-b border-white/25 bg-[#f8f6f1]/78 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
-          <Link to="/" className="text-2xl font-semibold text-emerald-900">Eco Organic Store</Link>
+          <Link to="/" className="text-2xl font-semibold text-emerald-900">{STORE_NAME}</Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link className={navClass('/shop')} to="/shop">Shop</Link>
             <Link className={navClass('/account/orders')} to="/account/orders">Orders</Link>
@@ -363,7 +364,7 @@ function OrderSuccess() {
   return (
     <PageShell title="Thank you">
       <div className={`${storeCard} p-8 text-emerald-950`}>
-        Order payment completed. Thank you for choosing Eco Organic Store.
+        Order payment completed. Thank you for choosing {STORE_NAME}.
       </div>
     </PageShell>
   )

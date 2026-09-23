@@ -71,7 +71,7 @@ public class PaymentService {
                                 .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
                                         .setCurrency("inr")
                                         .setUnitAmount(amountPaise)
-                                        .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder().setName("Eco Organic Store Order " + orderNumber).build())
+                                        .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder().setName("Marni Eco organic store Order " + orderNumber).build())
                                         .build())
                                 .build())
                         .build();

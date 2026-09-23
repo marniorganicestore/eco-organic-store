@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { ApiError, authApi } from '../lib/api'
+import { STORE_NAME } from '../lib/brand'
 import { postLoginPath } from '../lib/postLoginPath'
 import { useAuthStore } from '../store/authStore'
 import { AuthShell } from '../components/auth/AuthShell'
@@ -97,7 +98,7 @@ export default function RegisterPage() {
     <AuthShell
       title="Create your account"
       subtitle="You will shop as a customer. Admin access is not chosen here."
-      asideTitle="Join Eco Organic Store as a customer."
+      asideTitle={`Join ${STORE_NAME} as a customer.`}
       asideBody="Save your cart and follow organic orders. If you also run the store, an admin grants that access after you sign up."
     >
       {error ? (

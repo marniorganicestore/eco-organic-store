@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { STORE_NAME } from '../../lib/brand'
 import { useAuthStore } from '../../store/authStore'
 
 const HOME_SCENE_SRC = '/images/home-hero.png'
@@ -22,7 +23,7 @@ export function HomeHero() {
       <div className="absolute inset-x-0 bottom-0 h-36 bg-linear-to-t from-emerald-950/55 to-transparent" />
       <div className="relative mx-auto flex min-h-[calc(100vh-4.75rem)] max-w-6xl items-center px-4 py-16">
         <div className="max-w-xl text-white">
-          <p className="text-xs font-medium uppercase tracking-[0.28em] text-emerald-100/90">Eco Organic Store</p>
+          <p className="text-xs font-medium uppercase tracking-[0.28em] text-emerald-100/90">{STORE_NAME}</p>
           <h1 className="mt-4 text-4xl font-semibold leading-tight drop-shadow-sm sm:text-5xl">
             Organic food, directly from trusted farms.
           </h1>

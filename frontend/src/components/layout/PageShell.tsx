@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { STORE_NAME } from '../../lib/brand'
 
 type PageShellProps = {
   title: string
@@ -21,7 +22,7 @@ export function PageShell({ title, subtitle, actions, children }: PageShellProps
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-emerald-800/80">Eco Organic Store</p>
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-emerald-800/80">{STORE_NAME}</p>
           <h1 className="mt-1 text-3xl font-semibold text-emerald-950">{title}</h1>
           {subtitle ? <p className="mt-1 max-w-xl text-sm text-slate-600">{subtitle}</p> : null}
         </div>
