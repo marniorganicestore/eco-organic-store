@@ -53,11 +53,11 @@ az containerapp hostname add -n $GatewayName -g $ResourceGroup --hostname $api -
 az containerapp hostname bind -n $GatewayName -g $ResourceGroup --hostname $api --environment $EnvironmentName --validation-method CNAME --output none
 
 Write-Host "Setting GitHub repo variables (triggers a new SPA bake on next Azure workflow)"
-gh variable set STOREFRONT_URL --body "https://$Apex" --repo marniorganicestore/harvest-co
-gh variable set VITE_API_BASE --body "https://$api" --repo marniorganicestore/harvest-co
+gh variable set STOREFRONT_URL --body "https://$Apex" --repo marniorganicestore/eco-organic-store
+gh variable set VITE_API_BASE --body "https://$api" --repo marniorganicestore/eco-organic-store
 
 Write-Host "Disabling GitHub Pages so it no longer claims the domain"
-gh api --method DELETE repos/marniorganicestore/harvest-co/pages 2>$null
+gh api --method DELETE repos/marniorganicestore/eco-organic-store/pages 2>$null
 
 Write-Host ""
 Write-Host "Custom domains bound."
