@@ -27,9 +27,9 @@ app:
   mail:
     enabled: ${MAIL_ENABLED:false}
     host: ${MAIL_HOST:}
-    port: ${MAIL_PORT:587}
+    port: ${MAIL_PORT:443}
     username: ${MAIL_USERNAME:admin@eco-organic-store.com}
     password: ${MAIL_PASSWORD:}
     from: ${MAIL_FROM:admin@eco-organic-store.com}
-    from-name: ${MAIL_FROM_NAME:Marni eco organic store}
+    from-name: ${MAIL_FROM_NAME:Marni Eco organic store}
     admin: ${MAIL_ADMIN:admin@eco-organic-store.com}
