@@ -80,18 +80,18 @@ public class PaymentService {
                         .uri(RAZORPAY_PAYMENT_LINKS)
                         .headers(headers -> headers.setBasicAuth(keyId, keySecret))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .body(Map.of(
-                                "amount", amountPaise,
-                                "currency", "INR",
-                                "accept_partial", false,
-                                "description", "Marni Eco organic store Order " + orderNumber,
-                                "reference_id", orderNumber,
-                                "callback_url", callbackUrl,
-                                "callback_method", "get",
-                                "expire_by", Instant.now().plusSeconds(LINK_TTL_SECONDS).getEpochSecond(),
-                                "reminder_enable", false,
-                                "notify", Map.of("sms", false, "email", false),
-                                "notes", Map.of("order_number", orderNumber)))
+                        .body(Map.ofEntries(
+                                Map.entry("amount", amountPaise),
+                                Map.entry("currency", "INR"),
+                                Map.entry("accept_partial", false),
+                                Map.entry("description", "Marni Eco organic store Order " + orderNumber),
+                                Map.entry("reference_id", orderNumber),
+                                Map.entry("callback_url", callbackUrl),
+                                Map.entry("callback_method", "get"),
+                                Map.entry("expire_by", Instant.now().plusSeconds(LINK_TTL_SECONDS).getEpochSecond()),
+                                Map.entry("reminder_enable", false),
+                                Map.entry("notify", Map.of("sms", false, "email", false)),
+                                Map.entry("notes", Map.of("order_number", orderNumber))))
                         .retrieve()
                         .body(PaymentLinkResponse.class);
                 if (link == null || link.short_url() == null || link.short_url().isBlank() || link.id() == null) {
