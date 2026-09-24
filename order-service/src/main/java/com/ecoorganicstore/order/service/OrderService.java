@@ -1,10 +1,12 @@
 package com.ecoorganicstore.order.service;
 
+import com.ecoorganicstore.common.web.ForbiddenException;
+import com.ecoorganicstore.common.web.UnauthorizedException;
 import com.ecoorganicstore.order.domain.Fulfillment;
 import com.ecoorganicstore.order.domain.Order;
 import com.ecoorganicstore.order.repo.OrderRepository;
-import com.ecoorganicstore.common.web.ForbiddenException;
-import com.ecoorganicstore.common.web.UnauthorizedException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 @Service
 public class OrderService {
@@ -89,7 +92,7 @@ public class OrderService {
         } catch (RuntimeException ex) {
             log.warn("Payment session failed for {}", orderNumber, ex);
             abandonUnpaidCheckout(order);
-            throw new IllegalArgumentException("Payment could not be started. Nothing was charged. Please try again.");
+            throw new IllegalArgumentException(paymentFailureMessage(ex));
         }
         if (session == null || session.get("checkoutUrl") == null || session.get("paymentId") == null) {
             abandonUnpaidCheckout(order);
@@ -99,6 +102,33 @@ public class OrderService {
         order.setPaymentId(String.valueOf(session.get("paymentId")));
         orderRepository.save(order);
         return new CheckoutResponse(orderNumber, String.valueOf(session.get("checkoutUrl")));
+    }
+
+    static String paymentFailureMessage(RuntimeException ex) {
+        String detail = "";
+        if (ex instanceof RestClientResponseException response) {
+            detail = problemDetail(response.getResponseBodyAsString());
+        }
+        if (detail.isBlank()) {
+            return "Payment could not be started. Nothing was charged. Please try again.";
+        }
+        return detail;
+    }
+
+    private static String problemDetail(String body) {
+        if (body == null || body.isBlank()) {
+            return "";
+        }
+        try {
+            JsonNode detail = new ObjectMapper().readTree(body).path("detail");
+            String text = detail.asText("").trim();
+            if (text.length() > 240) {
+                text = text.substring(0, 240);
+            }
+            return text;
+        } catch (Exception ex) {
+            return "";
+        }
     }
 
     private void abandonUnpaidCheckout(Order order) {

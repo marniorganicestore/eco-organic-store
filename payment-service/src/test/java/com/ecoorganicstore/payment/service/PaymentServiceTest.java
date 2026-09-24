@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -81,6 +82,15 @@ class PaymentServiceTest {
 
         verify(restClient, times(1)).post();
         verify(processedEventRepository, times(1)).save(any());
+    }
+
+    @Test
+    void razorpayErrorDescriptionIsShownWithoutTheRawBody() {
+        String body = "{\"error\":{\"description\":\"Authentication failed\"}}";
+        assertEquals("Authentication failed", PaymentService.razorpayDescription(body));
+        assertEquals("Unable to create Razorpay payment link. Authentication failed",
+                PaymentService.paymentLinkFailure(PaymentService.razorpayDescription(body)));
+        assertEquals("Unable to create Razorpay payment link", PaymentService.paymentLinkFailure(""));
     }
 
     @Test

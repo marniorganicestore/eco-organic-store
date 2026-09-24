@@ -23,11 +23,15 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 @Service
 public class PaymentService {
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
     private static final String RAZORPAY_PAYMENT_LINKS = "https://api.razorpay.com/v1/payment_links";
     private static final long LINK_TTL_SECONDS = 20 * 60;
 
@@ -76,7 +80,7 @@ public class PaymentService {
                 throw new IllegalArgumentException("Razorpay requires a minimum charge of ₹1.");
             }
             try {
-                PaymentLinkResponse link = restClient.post()
+                String raw = restClient.post()
                         .uri(RAZORPAY_PAYMENT_LINKS)
                         .headers(headers -> headers.setBasicAuth(keyId, keySecret))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -93,14 +97,21 @@ public class PaymentService {
                                 Map.entry("notify", Map.of("sms", false, "email", false)),
                                 Map.entry("notes", Map.of("order_number", orderNumber))))
                         .retrieve()
-                        .body(PaymentLinkResponse.class);
-                if (link == null || link.short_url() == null || link.short_url().isBlank() || link.id() == null) {
+                        .body(String.class);
+                JsonNode link = raw == null ? null : objectMapper.readTree(raw);
+                String shortUrl = link == null ? "" : link.path("short_url").asText("");
+                paymentLinkId = link == null ? "" : link.path("id").asText("");
+                if (shortUrl.isBlank() || paymentLinkId.isBlank()) {
                     throw new IllegalArgumentException("Unable to create Razorpay payment link");
                 }
-                checkoutUrl = link.short_url();
-                paymentLinkId = link.id();
-            } catch (RestClientException ex) {
-                throw new IllegalArgumentException("Unable to create Razorpay payment link");
+                checkoutUrl = shortUrl;
+            } catch (RestClientResponseException ex) {
+                String description = razorpayDescription(ex.getResponseBodyAsString());
+                log.warn("Razorpay payment link failed: status={} description={}", ex.getStatusCode().value(), description);
+                throw new IllegalArgumentException(paymentLinkFailure(description), ex);
+            } catch (RestClientException | JsonProcessingException ex) {
+                log.warn("Razorpay payment link failed", ex);
+                throw new IllegalArgumentException("Unable to create Razorpay payment link", ex);
             }
         } else {
             paymentLinkId = "demo_" + UUID.randomUUID();
@@ -205,7 +216,28 @@ public class PaymentService {
         }
     }
 
-    public record SessionResponse(String paymentId, String checkoutUrl) {}
+    static String razorpayDescription(String body) {
+        if (body == null || body.isBlank()) {
+            return "";
+        }
+        try {
+            JsonNode error = new ObjectMapper().readTree(body).path("error").path("description");
+            String description = error.asText("").trim();
+            if (description.length() > 180) {
+                description = description.substring(0, 180);
+            }
+            return description;
+        } catch (JsonProcessingException ex) {
+            return "";
+        }
+    }
 
-    public record PaymentLinkResponse(String id, String short_url, String status) {}
+    static String paymentLinkFailure(String description) {
+        if (description == null || description.isBlank()) {
+            return "Unable to create Razorpay payment link";
+        }
+        return "Unable to create Razorpay payment link. " + description;
+    }
+
+    public record SessionResponse(String paymentId, String checkoutUrl) {}
 }
