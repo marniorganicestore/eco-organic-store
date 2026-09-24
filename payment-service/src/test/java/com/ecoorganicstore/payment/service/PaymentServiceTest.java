@@ -4,7 +4,6 @@ import com.ecoorganicstore.common.web.UnauthorizedException;
 import com.ecoorganicstore.payment.domain.Payment;
 import com.ecoorganicstore.payment.repo.PaymentRepository;
 import com.ecoorganicstore.payment.repo.ProcessedEventRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;
 import java.util.Optional;
@@ -47,7 +46,6 @@ class PaymentServiceTest {
                 paymentRepository,
                 processedEventRepository,
                 restClient,
-                new ObjectMapper(),
                 "internal-key",
                 "rzp_test_key",
                 "key-secret",
@@ -89,8 +87,8 @@ class PaymentServiceTest {
         String body = "{\"error\":{\"description\":\"Authentication failed\"}}";
         assertEquals("Authentication failed", PaymentService.razorpayDescription(body));
         assertEquals("Unable to create Razorpay order. Authentication failed",
-                PaymentService.paymentLinkFailure(PaymentService.razorpayDescription(body)));
-        assertEquals("Unable to create Razorpay order", PaymentService.paymentLinkFailure(""));
+                PaymentService.orderFailure(PaymentService.razorpayDescription(body)));
+        assertEquals("Unable to create Razorpay order", PaymentService.orderFailure(""));
     }
 
     @Test

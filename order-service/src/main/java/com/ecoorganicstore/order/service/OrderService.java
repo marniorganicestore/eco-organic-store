@@ -82,13 +82,13 @@ public class OrderService {
         order.setReservationId(String.valueOf(reserve.get("id")));
         order = orderRepository.save(order);
 
-        Map session;
+        PaymentSession session;
         try {
             session = restClient.post().uri(paymentUrl + "/internal/payments/session")
                     .header("X-Internal-Key", internalKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("orderNumber", orderNumber, "amountPaise", total))
-                    .retrieve().body(Map.class);
+                    .retrieve().body(PaymentSession.class);
         } catch (RestClientResponseException ex) {
             log.warn("Payment session failed for {}", orderNumber, ex);
             abandonUnpaidCheckout(order);
@@ -97,41 +97,34 @@ public class OrderService {
             if (status == 401 || status == 403) {
                 throw new UnauthorizedException(message);
             }
-            if (status >= 500) {
-                throw new IllegalStateException(message);
-            }
             throw new IllegalArgumentException(message);
         } catch (RuntimeException ex) {
             log.warn("Payment session failed for {}", orderNumber, ex);
             abandonUnpaidCheckout(order);
             throw new IllegalArgumentException(paymentFailureMessage(ex));
         }
-        if (session == null || session.get("paymentId") == null) {
+        if (session == null || session.paymentId() == null || session.paymentId().isBlank()) {
             abandonUnpaidCheckout(order);
             throw new IllegalArgumentException("Payment could not be started. Nothing was charged. Please try again.");
         }
-        String razorpayOrderId = text(session, "orderId");
-        String keyId = text(session, "keyId");
-        String checkoutUrl = text(session, "checkoutUrl");
+        String razorpayOrderId = blankToEmpty(session.orderId());
+        String keyId = blankToEmpty(session.keyId());
+        String checkoutUrl = blankToEmpty(session.checkoutUrl());
         boolean standardCheckout = !razorpayOrderId.isBlank() && !keyId.isBlank();
         if (!standardCheckout && checkoutUrl.isBlank()) {
             abandonUnpaidCheckout(order);
             throw new IllegalArgumentException("Payment could not be started. Nothing was charged. Please try again.");
         }
 
-        order.setPaymentId(String.valueOf(session.get("paymentId")));
+        order.setPaymentId(session.paymentId());
         orderRepository.save(order);
-        long amount = longValue(session.get("amount"), total);
-        return new CheckoutResponse(orderNumber, razorpayOrderId, amount, text(session, "currency").isBlank() ? "INR" : text(session, "currency"), keyId, checkoutUrl);
+        long amount = session.amount() > 0 ? session.amount() : total;
+        String currency = session.currency() == null || session.currency().isBlank() ? "INR" : session.currency();
+        return new CheckoutResponse(orderNumber, razorpayOrderId, amount, currency, keyId, checkoutUrl);
     }
 
-    private static String text(Map session, String key) {
-        Object value = session.get(key);
-        return value == null ? "" : String.valueOf(value);
-    }
-
-    private static long longValue(Object value, long fallback) {
-        return value instanceof Number number ? number.longValue() : fallback;
+    private static String blankToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     static String paymentFailureMessage(RuntimeException ex) {
@@ -222,6 +215,8 @@ public class OrderService {
         orderNotifier.statusChanged(saved);
         return saved;
     }
+
+    public record PaymentSession(String paymentId, String orderId, long amount, String currency, String keyId, String checkoutUrl) {}
 
     public record CheckoutResponse(String orderNumber, String orderId, long amount, String currency, String keyId, String checkoutUrl) {}
 }

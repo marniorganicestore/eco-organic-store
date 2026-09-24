@@ -37,7 +37,6 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final ProcessedEventRepository processedEventRepository;
     private final RestClient restClient;
-    private final ObjectMapper objectMapper;
     private final String internalKey;
     private final String keyId;
     private final String keySecret;
@@ -47,7 +46,6 @@ public class PaymentService {
     public PaymentService(PaymentRepository paymentRepository,
                           ProcessedEventRepository processedEventRepository,
                           RestClient restClient,
-                          ObjectMapper objectMapper,
                           @Value("${app.internal-key}") String internalKey,
                           @Value("${app.razorpay.key-id:}") String keyId,
                           @Value("${app.razorpay.key-secret:}") String keySecret,
@@ -56,7 +54,6 @@ public class PaymentService {
         this.paymentRepository = paymentRepository;
         this.processedEventRepository = processedEventRepository;
         this.restClient = restClient;
-        this.objectMapper = objectMapper;
         this.internalKey = internalKey;
         this.keyId = keyId;
         this.keySecret = keySecret;
@@ -84,7 +81,7 @@ public class PaymentService {
                     "http://localhost:5173/order/success?orderNumber=" + orderNumber);
         }
         try {
-            String raw = restClient.post()
+            RazorpayOrder order = restClient.post()
                     .uri(RAZORPAY_ORDERS)
                     .headers(headers -> headers.setBasicAuth(keyId, keySecret))
                     .contentType(MediaType.APPLICATION_JSON)
@@ -94,22 +91,18 @@ public class PaymentService {
                             "receipt", orderNumber,
                             "notes", Map.of("order_number", orderNumber)))
                     .retrieve()
-                    .body(String.class);
-            JsonNode order = raw == null ? null : objectMapper.readTree(raw);
-            String razorpayOrderId = order == null ? "" : order.path("id").asText("");
-            long amount = order == null ? 0 : order.path("amount").asLong(0);
-            String currency = order == null ? "" : order.path("currency").asText("");
-            if (razorpayOrderId.isBlank() || amount < MINIMUM_AMOUNT_PAISE || currency.isBlank()) {
-                throw new IllegalStateException("Unable to create Razorpay order");
+                    .body(RazorpayOrder.class);
+            if (order == null || isBlank(order.id()) || order.amount() < MINIMUM_AMOUNT_PAISE || isBlank(order.currency())) {
+                throw new IllegalArgumentException("Unable to create Razorpay order");
             }
-            payment.setRazorpayOrderId(razorpayOrderId);
+            payment.setRazorpayOrderId(order.id());
             payment = paymentRepository.save(payment);
-            return new SessionResponse(payment.getId(), razorpayOrderId, amount, currency, keyId, "");
+            return new SessionResponse(payment.getId(), order.id(), order.amount(), order.currency(), keyId, "");
         } catch (RestClientResponseException ex) {
             throw razorpayOrderFailure(ex);
-        } catch (RestClientException | JsonProcessingException ex) {
+        } catch (RestClientException ex) {
             log.warn("Razorpay order failed", ex);
-            throw new IllegalStateException("Unable to create Razorpay order", ex);
+            throw new IllegalArgumentException("Unable to create Razorpay order", ex);
         }
     }
 
@@ -118,7 +111,7 @@ public class PaymentService {
             throw new IllegalArgumentException("Payment confirmation is incomplete.");
         }
         if (!razorpayConfigured()) {
-            throw new IllegalStateException("Razorpay is not configured.");
+            throw new IllegalArgumentException("Razorpay is not configured.");
         }
         String message = razorpayOrderId.trim() + "|" + razorpayPaymentId.trim();
         if (!signaturesMatch(message, razorpaySignature, keySecret)) {
@@ -138,7 +131,7 @@ public class PaymentService {
             throw new UnauthorizedException("Invalid Razorpay signature");
         }
         try {
-            JsonNode root = objectMapper.readTree(payload);
+            JsonNode root = readTree(payload);
             String type = root.path("event").asText("");
             JsonNode link = root.path("payload").path("payment_link").path("entity");
             String orderNumber = link.path("reference_id").asText("");
@@ -236,7 +229,7 @@ public class PaymentService {
             return "";
         }
         try {
-            JsonNode error = new ObjectMapper().readTree(body).path("error").path("description");
+            JsonNode error = readTree(body).path("error").path("description");
             String description = error.asText("").trim();
             if (description.length() > 180) {
                 description = description.substring(0, 180);
@@ -247,11 +240,15 @@ public class PaymentService {
         }
     }
 
-    static String paymentLinkFailure(String description) {
+    static String orderFailure(String description) {
         if (description == null || description.isBlank()) {
             return "Unable to create Razorpay order";
         }
         return "Unable to create Razorpay order. " + description;
+    }
+
+    private static JsonNode readTree(String body) throws JsonProcessingException {
+        return new ObjectMapper().readTree(body);
     }
 
     private RuntimeException razorpayOrderFailure(RestClientResponseException ex) {
@@ -261,7 +258,7 @@ public class PaymentService {
         if (status == 401 || status == 403) {
             return new UnauthorizedException("Razorpay authentication failed");
         }
-        return new IllegalStateException(paymentLinkFailure(description), ex);
+        return new IllegalArgumentException(orderFailure(description), ex);
     }
 
     private String orderNumberFromStandardEvent(JsonNode root) {
@@ -289,6 +286,8 @@ public class PaymentService {
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
+
+    public record RazorpayOrder(String id, long amount, String currency) {}
 
     public record SessionResponse(String paymentId, String orderId, long amount, String currency, String keyId, String checkoutUrl) {}
 
