@@ -89,19 +89,49 @@ public class OrderService {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("orderNumber", orderNumber, "amountPaise", total))
                     .retrieve().body(Map.class);
+        } catch (RestClientResponseException ex) {
+            log.warn("Payment session failed for {}", orderNumber, ex);
+            abandonUnpaidCheckout(order);
+            String message = paymentFailureMessage(ex);
+            int status = ex.getStatusCode().value();
+            if (status == 401 || status == 403) {
+                throw new UnauthorizedException(message);
+            }
+            if (status >= 500) {
+                throw new IllegalStateException(message);
+            }
+            throw new IllegalArgumentException(message);
         } catch (RuntimeException ex) {
             log.warn("Payment session failed for {}", orderNumber, ex);
             abandonUnpaidCheckout(order);
             throw new IllegalArgumentException(paymentFailureMessage(ex));
         }
-        if (session == null || session.get("checkoutUrl") == null || session.get("paymentId") == null) {
+        if (session == null || session.get("paymentId") == null) {
+            abandonUnpaidCheckout(order);
+            throw new IllegalArgumentException("Payment could not be started. Nothing was charged. Please try again.");
+        }
+        String razorpayOrderId = text(session, "orderId");
+        String keyId = text(session, "keyId");
+        String checkoutUrl = text(session, "checkoutUrl");
+        boolean standardCheckout = !razorpayOrderId.isBlank() && !keyId.isBlank();
+        if (!standardCheckout && checkoutUrl.isBlank()) {
             abandonUnpaidCheckout(order);
             throw new IllegalArgumentException("Payment could not be started. Nothing was charged. Please try again.");
         }
 
         order.setPaymentId(String.valueOf(session.get("paymentId")));
         orderRepository.save(order);
-        return new CheckoutResponse(orderNumber, String.valueOf(session.get("checkoutUrl")));
+        long amount = longValue(session.get("amount"), total);
+        return new CheckoutResponse(orderNumber, razorpayOrderId, amount, text(session, "currency").isBlank() ? "INR" : text(session, "currency"), keyId, checkoutUrl);
+    }
+
+    private static String text(Map session, String key) {
+        Object value = session.get(key);
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private static long longValue(Object value, long fallback) {
+        return value instanceof Number number ? number.longValue() : fallback;
     }
 
     static String paymentFailureMessage(RuntimeException ex) {
@@ -193,5 +223,5 @@ public class OrderService {
         return saved;
     }
 
-    public record CheckoutResponse(String orderNumber, String checkoutUrl) {}
+    public record CheckoutResponse(String orderNumber, String orderId, long amount, String currency, String keyId, String checkoutUrl) {}
 }

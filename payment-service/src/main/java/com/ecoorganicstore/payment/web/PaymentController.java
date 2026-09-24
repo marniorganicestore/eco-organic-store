@@ -4,6 +4,9 @@ import com.ecoorganicstore.common.security.AuthGuards;
 import com.ecoorganicstore.payment.domain.Payment;
 import com.ecoorganicstore.payment.service.PaymentService;
 import com.ecoorganicstore.payment.service.PaymentService.SessionResponse;
+import com.ecoorganicstore.payment.service.PaymentService.VerifyResponse;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Instant;
@@ -37,6 +40,12 @@ public class PaymentController {
     @PostMapping("/internal/payments/session")
     public SessionResponse createSession(@RequestBody SessionRequest request) {
         return paymentService.createSession(request.orderNumber(), request.amountPaise());
+    }
+
+    @PostMapping("/api/payments/verify")
+    public VerifyResponse verify(HttpServletRequest request, @RequestBody VerifyRequest body) {
+        AuthGuards.requireUser(request);
+        return paymentService.verifyPayment(body.razorpayOrderId(), body.razorpayPaymentId(), body.razorpaySignature());
     }
 
     @PostMapping("/api/webhooks/razorpay")
@@ -73,5 +82,10 @@ public class PaymentController {
     }
 
     public record SessionRequest(String orderNumber, long amountPaise) {}
+
+    public record VerifyRequest(
+            @JsonProperty("razorpay_order_id") @JsonAlias("razorpayOrderId") String razorpayOrderId,
+            @JsonProperty("razorpay_payment_id") @JsonAlias("razorpayPaymentId") String razorpayPaymentId,
+            @JsonProperty("razorpay_signature") @JsonAlias("razorpaySignature") String razorpaySignature) {}
     public record PaymentView(String id, String orderNumber, long amountPaise, String status, Instant createdAt) {}
 }

@@ -11,6 +11,7 @@ public class Payment {
     @Indexed(unique = true) private String orderNumber;
     private long amountPaise;
     private String paymentLinkId;
+    @Indexed(unique = true, sparse = true) private String razorpayOrderId;
     private String status;
     private Instant createdAt = Instant.now();
 
@@ -22,6 +23,8 @@ public class Payment {
     public void setAmountPaise(long amountPaise) { this.amountPaise = amountPaise; }
     public String getPaymentLinkId() { return paymentLinkId; }
     public void setPaymentLinkId(String paymentLinkId) { this.paymentLinkId = paymentLinkId; }
+    public String getRazorpayOrderId() { return razorpayOrderId; }
+    public void setRazorpayOrderId(String razorpayOrderId) { this.razorpayOrderId = razorpayOrderId; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }

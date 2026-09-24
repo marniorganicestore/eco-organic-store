@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.never;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -51,7 +52,6 @@ class PaymentServiceTest {
                 "rzp_test_key",
                 "key-secret",
                 "whsec_test",
-                "http://localhost:8080/api/payments/razorpay/callback",
                 "http://localhost:8085");
     }
 
@@ -88,9 +88,9 @@ class PaymentServiceTest {
     void razorpayErrorDescriptionIsShownWithoutTheRawBody() {
         String body = "{\"error\":{\"description\":\"Authentication failed\"}}";
         assertEquals("Authentication failed", PaymentService.razorpayDescription(body));
-        assertEquals("Unable to create Razorpay payment link. Authentication failed",
+        assertEquals("Unable to create Razorpay order. Authentication failed",
                 PaymentService.paymentLinkFailure(PaymentService.razorpayDescription(body)));
-        assertEquals("Unable to create Razorpay payment link", PaymentService.paymentLinkFailure(""));
+        assertEquals("Unable to create Razorpay order", PaymentService.paymentLinkFailure(""));
     }
 
     @Test
@@ -103,6 +103,38 @@ class PaymentServiceTest {
         when(paymentRepository.findByOrderNumber("HC-1")).thenReturn(Optional.of(payment));
         when(processedEventRepository.existsByEventId("callback:pay_1")).thenReturn(false);
         assertTrue(service.confirmCallback("plink_1", "HC-1", "paid", "pay_1", signature));
+    }
+
+    @Test
+    void signatureMismatchDoesNotMarkPaid() {
+        assertThrows(IllegalArgumentException.class, () -> service.verifyPayment("order_1", "pay_1", "deadbeef"));
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void missingVerifyFieldsAreRejected() {
+        assertThrows(IllegalArgumentException.class, () -> service.verifyPayment("", "pay_1", "sig"));
+        assertThrows(IllegalArgumentException.class, () -> service.verifyPayment("order_1", " ", "sig"));
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void matchingCheckoutSignatureMarksTheOrderPaid() throws Exception {
+        Payment payment = new Payment();
+        payment.setOrderNumber("HC-1");
+        payment.setStatus("PENDING");
+        payment.setRazorpayOrderId("order_1");
+        when(paymentRepository.findByRazorpayOrderId("order_1")).thenReturn(Optional.of(payment));
+        when(paymentRepository.findByOrderNumber("HC-1")).thenReturn(Optional.of(payment));
+        when(processedEventRepository.existsByEventId("checkout:pay_1")).thenReturn(false);
+        String signature = hmac("order_1|pay_1", "key-secret");
+
+        var result = service.verifyPayment("order_1", "pay_1", signature);
+
+        assertTrue(result.success());
+        assertEquals("HC-1", result.orderNumber());
+        assertEquals("PAID", payment.getStatus());
+        verify(restClient, times(1)).post();
     }
 
     private static String hmac(String message, String secret) throws Exception {

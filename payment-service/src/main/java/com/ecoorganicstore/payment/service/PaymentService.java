@@ -12,7 +12,6 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
-import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
@@ -32,8 +31,8 @@ import org.springframework.web.client.RestClientResponseException;
 @Service
 public class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
-    private static final String RAZORPAY_PAYMENT_LINKS = "https://api.razorpay.com/v1/payment_links";
-    private static final long LINK_TTL_SECONDS = 20 * 60;
+    private static final String RAZORPAY_ORDERS = "https://api.razorpay.com/v1/orders";
+    private static final long MINIMUM_AMOUNT_PAISE = 100;
 
     private final PaymentRepository paymentRepository;
     private final ProcessedEventRepository processedEventRepository;
@@ -43,7 +42,6 @@ public class PaymentService {
     private final String keyId;
     private final String keySecret;
     private final String webhookSecret;
-    private final String callbackUrl;
     private final String orderUrl;
 
     public PaymentService(PaymentRepository paymentRepository,
@@ -54,7 +52,6 @@ public class PaymentService {
                           @Value("${app.razorpay.key-id:}") String keyId,
                           @Value("${app.razorpay.key-secret:}") String keySecret,
                           @Value("${app.razorpay.webhook-secret:}") String webhookSecret,
-                          @Value("${app.razorpay.callback-url:http://localhost:8080/api/payments/razorpay/callback}") String callbackUrl,
                           @Value("${services.order:http://localhost:8085}") String orderUrl) {
         this.paymentRepository = paymentRepository;
         this.processedEventRepository = processedEventRepository;
@@ -64,62 +61,73 @@ public class PaymentService {
         this.keyId = keyId;
         this.keySecret = keySecret;
         this.webhookSecret = webhookSecret;
-        this.callbackUrl = callbackUrl;
         this.orderUrl = orderUrl;
     }
 
     public SessionResponse createSession(String orderNumber, long amountPaise) {
+        if (amountPaise < MINIMUM_AMOUNT_PAISE) {
+            throw new IllegalArgumentException("Razorpay requires a minimum charge of ₹1.");
+        }
         Payment payment = paymentRepository.findByOrderNumber(orderNumber).orElseGet(Payment::new);
         payment.setOrderNumber(orderNumber);
         payment.setAmountPaise(amountPaise);
         payment.setStatus("PENDING");
-        String checkoutUrl;
-        String paymentLinkId;
-        if (razorpayConfigured()) {
-            if (amountPaise < 100) {
-                throw new IllegalArgumentException("Razorpay requires a minimum charge of ₹1.");
-            }
-            try {
-                String raw = restClient.post()
-                        .uri(RAZORPAY_PAYMENT_LINKS)
-                        .headers(headers -> headers.setBasicAuth(keyId, keySecret))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(Map.ofEntries(
-                                Map.entry("amount", amountPaise),
-                                Map.entry("currency", "INR"),
-                                Map.entry("accept_partial", false),
-                                Map.entry("description", "Marni Eco organic store Order " + orderNumber),
-                                Map.entry("reference_id", orderNumber),
-                                Map.entry("callback_url", callbackUrl),
-                                Map.entry("callback_method", "get"),
-                                Map.entry("expire_by", Instant.now().plusSeconds(LINK_TTL_SECONDS).getEpochSecond()),
-                                Map.entry("reminder_enable", false),
-                                Map.entry("notify", Map.of("sms", false, "email", false)),
-                                Map.entry("notes", Map.of("order_number", orderNumber))))
-                        .retrieve()
-                        .body(String.class);
-                JsonNode link = raw == null ? null : objectMapper.readTree(raw);
-                String shortUrl = link == null ? "" : link.path("short_url").asText("");
-                paymentLinkId = link == null ? "" : link.path("id").asText("");
-                if (shortUrl.isBlank() || paymentLinkId.isBlank()) {
-                    throw new IllegalArgumentException("Unable to create Razorpay payment link");
-                }
-                checkoutUrl = shortUrl;
-            } catch (RestClientResponseException ex) {
-                String description = razorpayDescription(ex.getResponseBodyAsString());
-                log.warn("Razorpay payment link failed: status={} description={}", ex.getStatusCode().value(), description);
-                throw new IllegalArgumentException(paymentLinkFailure(description), ex);
-            } catch (RestClientException | JsonProcessingException ex) {
-                log.warn("Razorpay payment link failed", ex);
-                throw new IllegalArgumentException("Unable to create Razorpay payment link", ex);
-            }
-        } else {
-            paymentLinkId = "demo_" + UUID.randomUUID();
-            checkoutUrl = "http://localhost:5173/order/success?orderNumber=" + orderNumber;
+        if (!razorpayConfigured()) {
+            payment.setPaymentLinkId("demo_" + UUID.randomUUID());
+            payment = paymentRepository.save(payment);
+            return new SessionResponse(
+                    payment.getId(),
+                    "",
+                    amountPaise,
+                    "INR",
+                    "",
+                    "http://localhost:5173/order/success?orderNumber=" + orderNumber);
         }
-        payment.setPaymentLinkId(paymentLinkId);
-        payment = paymentRepository.save(payment);
-        return new SessionResponse(payment.getId(), checkoutUrl);
+        try {
+            String raw = restClient.post()
+                    .uri(RAZORPAY_ORDERS)
+                    .headers(headers -> headers.setBasicAuth(keyId, keySecret))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                            "amount", amountPaise,
+                            "currency", "INR",
+                            "receipt", orderNumber,
+                            "notes", Map.of("order_number", orderNumber)))
+                    .retrieve()
+                    .body(String.class);
+            JsonNode order = raw == null ? null : objectMapper.readTree(raw);
+            String razorpayOrderId = order == null ? "" : order.path("id").asText("");
+            long amount = order == null ? 0 : order.path("amount").asLong(0);
+            String currency = order == null ? "" : order.path("currency").asText("");
+            if (razorpayOrderId.isBlank() || amount < MINIMUM_AMOUNT_PAISE || currency.isBlank()) {
+                throw new IllegalStateException("Unable to create Razorpay order");
+            }
+            payment.setRazorpayOrderId(razorpayOrderId);
+            payment = paymentRepository.save(payment);
+            return new SessionResponse(payment.getId(), razorpayOrderId, amount, currency, keyId, "");
+        } catch (RestClientResponseException ex) {
+            throw razorpayOrderFailure(ex);
+        } catch (RestClientException | JsonProcessingException ex) {
+            log.warn("Razorpay order failed", ex);
+            throw new IllegalStateException("Unable to create Razorpay order", ex);
+        }
+    }
+
+    public VerifyResponse verifyPayment(String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) {
+        if (isBlank(razorpayOrderId) || isBlank(razorpayPaymentId) || isBlank(razorpaySignature)) {
+            throw new IllegalArgumentException("Payment confirmation is incomplete.");
+        }
+        if (!razorpayConfigured()) {
+            throw new IllegalStateException("Razorpay is not configured.");
+        }
+        String message = razorpayOrderId.trim() + "|" + razorpayPaymentId.trim();
+        if (!signaturesMatch(message, razorpaySignature, keySecret)) {
+            throw new IllegalArgumentException("Payment signature does not match.");
+        }
+        Payment payment = paymentRepository.findByRazorpayOrderId(razorpayOrderId.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+        applyOutcome("checkout:" + razorpayPaymentId.trim(), payment.getOrderNumber(), "PAID");
+        return new VerifyResponse(true, payment.getOrderNumber());
     }
 
     public void handleWebhookPayload(String payload, String signature, String eventId) {
@@ -141,6 +149,13 @@ public class PaymentService {
                 applyOutcome(resolvedEventId, orderNumber, "PAID");
             } else if ("payment_link.expired".equals(type) || "payment_link.cancelled".equals(type)) {
                 applyOutcome(resolvedEventId, orderNumber, "FAILED");
+            } else if ("order.paid".equals(type) || "payment.captured".equals(type)) {
+                String storeOrder = orderNumberFromStandardEvent(root);
+                String paymentId = root.path("payload").path("payment").path("entity").path("id").asText("");
+                String standardEventId = eventId == null || eventId.isBlank() ? type + ":" + paymentId : eventId;
+                if (!storeOrder.isBlank()) {
+                    applyOutcome(standardEventId, storeOrder, "PAID");
+                }
             }
         } catch (JsonProcessingException ex) {
             throw new UnauthorizedException("Invalid Razorpay signature");
@@ -234,10 +249,48 @@ public class PaymentService {
 
     static String paymentLinkFailure(String description) {
         if (description == null || description.isBlank()) {
-            return "Unable to create Razorpay payment link";
+            return "Unable to create Razorpay order";
         }
-        return "Unable to create Razorpay payment link. " + description;
+        return "Unable to create Razorpay order. " + description;
     }
 
-    public record SessionResponse(String paymentId, String checkoutUrl) {}
+    private RuntimeException razorpayOrderFailure(RestClientResponseException ex) {
+        int status = ex.getStatusCode().value();
+        String description = razorpayDescription(ex.getResponseBodyAsString());
+        log.warn("Razorpay order failed: status={} description={}", status, description);
+        if (status == 401 || status == 403) {
+            return new UnauthorizedException("Razorpay authentication failed");
+        }
+        return new IllegalStateException(paymentLinkFailure(description), ex);
+    }
+
+    private String orderNumberFromStandardEvent(JsonNode root) {
+        JsonNode payment = root.path("payload").path("payment").path("entity");
+        String fromNotes = payment.path("notes").path("order_number").asText("");
+        if (!fromNotes.isBlank()) {
+            return fromNotes;
+        }
+        JsonNode order = root.path("payload").path("order").path("entity");
+        String receipt = order.path("receipt").asText("");
+        if (!receipt.isBlank()) {
+            return receipt;
+        }
+        String fromOrderNotes = order.path("notes").path("order_number").asText("");
+        if (!fromOrderNotes.isBlank()) {
+            return fromOrderNotes;
+        }
+        String razorpayOrderId = payment.path("order_id").asText(order.path("id").asText(""));
+        if (razorpayOrderId.isBlank()) {
+            return "";
+        }
+        return paymentRepository.findByRazorpayOrderId(razorpayOrderId).map(Payment::getOrderNumber).orElse("");
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    public record SessionResponse(String paymentId, String orderId, long amount, String currency, String keyId, String checkoutUrl) {}
+
+    public record VerifyResponse(boolean success, String orderNumber) {}
 }

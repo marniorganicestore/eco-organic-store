@@ -10,6 +10,7 @@ import { useAuthStore } from './store/authStore'
 import { useCartStore } from './store/cartStore'
 import { useCart } from './hooks/useCart'
 import { checkoutBlocker } from './lib/cart'
+import { openRazorpayCheckout, razorpayKeyId } from './lib/razorpay'
 import { AddToCartControl } from './components/cart/AddToCartControl'
 import { CartNotice } from './components/cart/CartNotice'
 import { CartSummary } from './components/cart/CartSummary'
@@ -319,6 +320,9 @@ function ProductPage() {
 }
 
 function CheckoutPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
   const address = useCheckoutAddress()
   const cartQuery = useCart()
   const blocker = cartQuery.data ? checkoutBlocker(cartQuery.data) : null
@@ -338,8 +342,56 @@ function CheckoutPage() {
     setError('')
     setPending(true)
     try {
-      const res = await api.post<{ checkoutUrl: string }>('/checkout/sessions', { shippingAddress: address.shippingAddress.trim() })
-      window.location.href = res.checkoutUrl
+      const res = await api.post<{
+        orderNumber: string
+        orderId: string
+        amount: number
+        currency: string
+        keyId: string
+        checkoutUrl: string
+      }>('/checkout/sessions', { shippingAddress: address.shippingAddress.trim() })
+      const keyId = razorpayKeyId(res.keyId)
+      if (res.orderId && keyId) {
+        openRazorpayCheckout({
+          keyId,
+          orderId: res.orderId,
+          amount: res.amount,
+          currency: res.currency || 'INR',
+          description: `Order ${res.orderNumber}`,
+          name: user?.name,
+          email: user?.email,
+          onDismiss() {
+            setError('Payment cancelled. You can try again.')
+            setPending(false)
+          },
+          onFailure(message) {
+            setError(message)
+            setPending(false)
+          },
+          async onSuccess(payload) {
+            try {
+              await api.post('/payments/verify', {
+                razorpay_order_id: payload.razorpay_order_id,
+                razorpay_payment_id: payload.razorpay_payment_id,
+                razorpay_signature: payload.razorpay_signature
+              })
+              await queryClient.invalidateQueries({ queryKey: ['cart'] })
+              await queryClient.invalidateQueries({ queryKey: ['orders'] })
+              navigate('/order/success')
+            } catch (err) {
+              setError(err instanceof ApiError ? err.message : 'Payment could not be confirmed. If money was taken, it will show on your orders shortly.')
+              setPending(false)
+            }
+          }
+        })
+        return
+      }
+      if (res.checkoutUrl) {
+        window.location.href = res.checkoutUrl
+        return
+      }
+      setError('Unable to start payment. Please try again.')
+      setPending(false)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to start payment. Please try again.')
       setPending(false)
@@ -361,7 +413,7 @@ function CheckoutPage() {
             onCustomChange={address.setCustomValue}
           />
           <button className={`${storeBtn} w-full`} type="button" disabled={pending || address.loading || cartQuery.isPending || !ready} aria-busy={pending} onClick={pay}>
-            {pending ? 'Starting payment...' : 'Continue to payment'}
+            {pending ? 'Waiting for payment...' : 'Pay now'}
           </button>
         </div>
         <CartSummary cart={cartQuery.data} loading={cartQuery.isPending} showLines showCheckout={false} />
