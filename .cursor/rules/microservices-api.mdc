@@ -20,7 +20,7 @@ Each service owns its Mongo DB (`identity`, `catalog`, `cart`, `inventory`, `ord
 | Cart | `/api/cart` (guestToken query for guests) |
 | Checkout | `/api/checkout/sessions`, `/api/orders` |
 | Reviews | `/api/reviews`, `/api/products/{id}/reviews` |
-| Webhook | `/api/webhooks/stripe` (no JWT; signature / event id) |
+| Webhook | `/api/webhooks/razorpay` (no JWT; signature / event id). Browser return: `/api/payments/razorpay/callback` |
 | Admin | `/api/admin/**` — `ADMIN` role via `UserContextResolver` |
 
 Add new public paths by updating **both** the service controller and `gateway/src/main/resources/application.yml` routes. Route order matters: more specific paths (e.g. `/api/products/*/reviews`) before catch-alls.
@@ -38,7 +38,7 @@ Typical: catalog product-by-id + rating rollup · inventory reserve/confirm/rele
 - **inventory** — atomic reserve; confirm decrements onHand; release restores reserved.
 - **cart** — user or guest; merge on login; validate product + available qty.
 - **order** — status `PENDING_PAYMENT` → `CONFIRMED` → `PACKED` → `SHIPPED` → `DELIVERED` / `CANCELLED`.
-- **payment** — Stripe event id unique (`processed_events`) for idempotency.
+- **payment** — Razorpay event id unique (`processed_events`) for idempotency.
 - **review** — one review per user+product; verified purchase via order internal API.
 
 Shop availability: catalog may batch `GET /internal/stock?productIds=`. On failure, omit the badge — do not fail the listing.

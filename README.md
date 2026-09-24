@@ -12,7 +12,7 @@ Full-stack organic e-store built with Spring Boot 4.1 microservices, MongoDB, an
 - Spring Boot 4.1.1, Spring Cloud 2025.1.3, Gateway WebMVC
 - MongoDB 8 (database-per-service)
 - React 19.3, Vite 8, Tailwind CSS 4
-- Stripe Checkout (test mode)
+- Razorpay Checkout (test mode)
 
 ## Services
 
@@ -96,7 +96,7 @@ Browser  https://eco-organic-store.com     Azure Static Web Apps
          Cosmos DB for MongoDB (serverless) — one account, seven databases
 ```
 
-The gateway is the only public API. Domain services are not on the internet. Secrets live in Azure Key Vault; GitHub environment `azure` holds OIDC + the values synced on each deploy (`JWT_SECRET`, `INTERNAL_API_KEY`, Stripe, admin seed).
+The gateway is the only public API. Domain services are not on the internet. Secrets live in Azure Key Vault; GitHub environment `azure` holds OIDC + the values synced on each deploy (`JWT_SECRET`, `INTERNAL_API_KEY`, Razorpay, admin seed).
 
 **Site URL:** [https://eco-organic-store.com](https://eco-organic-store.com) (asset `base` is `/`). Set repo variable `VITE_API_BASE` to `https://api.eco-organic-store.com` after the custom domain is on the gateway. Until then the workflow bakes the default `*.azurecontainerapps.io` URL into the SPA. Leave `VITE_API_BASE` unset for local Vite (`/api` proxy). Gateway `CORS_ALLOWED_ORIGINS` must include the live storefront origin.
 
@@ -149,7 +149,7 @@ Optional second ruleset **Protect version tags**: target tags `v*`, enable Restr
 
 - Internal APIs are protected with `X-Internal-Key`.
 - Gateway blocks `/internal/**` from public access.
-- In development without Stripe keys, payment service returns a local success URL.
+- In development without Razorpay keys, payment service returns a local success URL.
 - Configure `GOOGLE_CLIENT_ID` to enable verified Google sign-in.
 - Configure `ADMIN_PASSWORD` (or `ADMIN_PASSWORD_HASH`) to bootstrap the seeded admin user.
-- Configure `STRIPE_WEBHOOK_SECRET` in non-local environments to enforce webhook signature verification.
+- Configure `RAZORPAY_WEBHOOK_SECRET` in non-local environments. Webhook: `POST /api/webhooks/razorpay`. The browser return is `GET /api/payments/razorpay/callback`, verified with the key secret.

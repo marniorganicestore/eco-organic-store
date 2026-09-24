@@ -16,7 +16,7 @@ Keep tests lean and behavioral. Prefer one invariant per test. No exhaustive CRU
 
 - Gateway: unauthenticated `/internal/**` is rejected; valid JWT becomes `X-User-*` headers.
 - Inventory: concurrent reserve cannot oversell; release restores `available`.
-- Payment: the same Stripe event id processed twice is idempotent.
+- Payment: the same Razorpay event id processed twice is idempotent.
 - Review: buyer without a qualifying order is rejected.
 
 ```java

@@ -44,7 +44,7 @@ spring:
             - id: payment
               uri: ${PAYMENT_SERVICE_URL:http://localhost:8086}
               predicates:
-                - Path=/api/webhooks/stripe,/api/admin/payments/**
+                - Path=/api/webhooks/razorpay,/api/payments/razorpay/callback,/api/admin/payments/**
             - id: review
               uri: ${REVIEW_SERVICE_URL:http://localhost:8087}
               predicates:

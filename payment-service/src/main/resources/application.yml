@@ -10,10 +10,12 @@ spring:
       enabled: true
 app:
   internal-key: ${INTERNAL_API_KEY:internal-secret}
-  stripe:
-    secret-key: ${STRIPE_SECRET_KEY:}
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
-    success-url: ${STRIPE_SUCCESS_URL:http://localhost:5173/order/success?session_id={CHECKOUT_SESSION_ID}}
-    cancel-url: ${STRIPE_CANCEL_URL:http://localhost:5173/cart}
+  razorpay:
+    key-id: ${RAZORPAY_KEY_ID:}
+    key-secret: ${RAZORPAY_KEY_SECRET:}
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+    callback-url: ${RAZORPAY_CALLBACK_URL:http://localhost:8080/api/payments/razorpay/callback}
+    success-url: ${RAZORPAY_SUCCESS_URL:http://localhost:5173/order/success}
+    cancel-url: ${RAZORPAY_CANCEL_URL:http://localhost:5173/cart}
 services:
   order: ${ORDER_SERVICE_URL:http://localhost:8085}

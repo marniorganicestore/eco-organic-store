@@ -35,7 +35,7 @@ pwsh -File ./infra/azure/bootstrap.ps1 -SubscriptionId '<subscription-guid>' -Gi
 
 3. GitHub → **Settings → Environments → New environment** named `azure`.
 4. Paste the three OIDC secrets the script prints (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`).
-5. Add application secrets on that same environment: `JWT_SECRET`, `INTERNAL_API_KEY`, `ADMIN_PASSWORD`, `MAIL_PASSWORD`, and optionally `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `GOOGLE_CLIENT_ID`.
+5. Add application secrets on that same environment: `JWT_SECRET`, `INTERNAL_API_KEY`, `ADMIN_PASSWORD`, `MAIL_PASSWORD`, and optionally `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `GOOGLE_CLIENT_ID`.
 6. Optional repo **variables**: `AZURE_RESOURCE_GROUP`, `AZURE_LOCATION`, `STOREFRONT_URL`, `VITE_API_BASE`, `MAIL_ENABLED`, `MAIL_HOST`.
 7. Run **Actions → Azure → Run workflow**.
 
@@ -62,7 +62,7 @@ Or paste this in GoDaddy → DNS (delete the GitHub Pages `A` / `AAAA` on `@` an
 
 GoDaddy often rejects a CNAME on `@`. If it does, leave `@` as a **301 forward** to `https://www.eco-organic-store.com`. Then run `bind-custom-domains.ps1` (it waits for DNS, attaches managed TLS, sets `STOREFRONT_URL` / `VITE_API_BASE`, and turns off GitHub Pages).
 
-Re-run **Actions → Azure** after bind so the SPA is compiled against `https://api.eco-organic-store.com`. Stripe webhook: `https://api.eco-organic-store.com/api/webhooks/stripe`.
+Re-run **Actions → Azure** after bind so the SPA is compiled against `https://api.eco-organic-store.com`. Razorpay webhook: `https://api.eco-organic-store.com/api/webhooks/razorpay`.
 
 ## Store email
 

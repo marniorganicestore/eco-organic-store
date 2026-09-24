@@ -33,7 +33,7 @@ public class AppConfig {
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        // Longer than one Stripe attempt (10s connect + 20s read) and shorter than the gateway read timeout.
+        // Longer than one Razorpay attempt (10s connect + 20s read) and shorter than the gateway read timeout.
         requestFactory.setReadTimeout(Duration.ofSeconds(40));
         return RestClient.builder().requestFactory(requestFactory).build();
     }

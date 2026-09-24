@@ -79,8 +79,9 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
         run: |
@@ -99,8 +100,9 @@ jobs:
           set_secret jwt-secret "${JWT_SECRET}"
           set_secret internal-api-key "${INTERNAL_API_KEY}"
           set_secret admin-password "${ADMIN_PASSWORD:- }"
-          set_secret stripe-secret-key "${STRIPE_SECRET_KEY:- }"
-          set_secret stripe-webhook-secret "${STRIPE_WEBHOOK_SECRET:- }"
+          set_secret razorpay-key-id "${RAZORPAY_KEY_ID:- }"
+          set_secret razorpay-key-secret "${RAZORPAY_KEY_SECRET:- }"
+          set_secret razorpay-webhook-secret "${RAZORPAY_WEBHOOK_SECRET:- }"
           set_secret google-client-id "${GOOGLE_CLIENT_ID:- }"
           set_secret mail-password "${MAIL_PASSWORD:- }"
 

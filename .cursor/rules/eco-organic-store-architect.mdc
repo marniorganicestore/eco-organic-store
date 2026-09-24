@@ -13,7 +13,7 @@ Organic e-store **Eco Organic Store**. Currency **INR** stored as `*Paise` (`lon
 
 ## Stack (do not downgrade)
 
-Java 21 · **virtual threads** · Spring Boot 4.1.1 · Spring Cloud 2025.1.3 · Gateway **WebMVC** · MongoDB 8 · React 19 · Vite 8 · Tailwind 4 · TanStack Query · Zustand · Stripe Checkout (test)
+Java 21 · **virtual threads** · Spring Boot 4.1.1 · Spring Cloud 2025.1.3 · Gateway **WebMVC** · MongoDB 8 · React 19 · Vite 8 · Tailwind 4 · TanStack Query · Zustand · Razorpay Checkout (test)
 
 Local infra is repo `docker-compose.yml` (Mongo 8 + `--profile app`). Hosted infra is Azure Container Apps + Cosmos DB for MongoDB + Static Web Apps (`infra/azure`). Do not add MySQL, Redis, AKS, or Spring Boot docker-compose auto-start.
 
@@ -29,7 +29,7 @@ Packages live under `com.ecoorganicstore.{module}` with `web` / `service` / `rep
 - Inter-service calls: `RestClient` + `X-Internal-Key` on `/internal/**`. No OpenFeign, Eureka, Kafka, or Config Server.
 - Gateway is the only public API. **Never route `/internal/**`.** CORS only on the gateway (localhost + the Azure storefront origin).
 - Catalog has **no stock field**. Inventory owns `onHand` / `reserved`. Available = onHand − reserved.
-- Checkout: snapshot cart → reserve stock → `PENDING_PAYMENT` → Stripe → confirm reservation + clear cart. Never decrement `onHand` until paid. TTL release is the backup.
+- Checkout: snapshot cart → reserve stock → `PENDING_PAYMENT` → Razorpay → confirm reservation + clear cart. Never decrement `onHand` until paid. TTL release is the backup.
 - Order line items snapshot **name + pricePaise** at checkout.
 - Secrets stay in `.env` locally and Azure Key Vault in production. Do not invent new services, ports, or BOMs.
 - Keep Mongo documents off the API: records/DTOs, constructor injection, centralized `ProblemDetail` errors.

@@ -5,7 +5,7 @@ param environmentName string
 param identityName string
 param keyVaultName string
 
-@description('Public storefront origin used for Stripe redirects and password-reset links, e.g. https://eco-organic-store.com')
+@description('Public storefront origin used for Razorpay redirects and password-reset links, e.g. https://eco-organic-store.com')
 param storefrontUrl string
 
 @description('Send mail from admin@eco-organic-store.com when true. Requires mailHost and Key Vault secret mail-password.')
@@ -238,17 +238,20 @@ module paymentService 'modules/container-app.bicep' = {
     keyVaultSecretNames: [
       'internal-api-key'
       'cosmos-payment-uri'
-      'stripe-secret-key'
-      'stripe-webhook-secret'
+      'razorpay-key-id'
+      'razorpay-key-secret'
+      'razorpay-webhook-secret'
     ]
     envVars: [
       { name: 'INTERNAL_API_KEY', secretRef: 'internal-api-key' }
       { name: 'MONGODB_URI', secretRef: 'cosmos-payment-uri' }
       { name: 'ORDER_SERVICE_URL', value: orderUrl }
-      { name: 'STRIPE_SECRET_KEY', secretRef: 'stripe-secret-key' }
-      { name: 'STRIPE_WEBHOOK_SECRET', secretRef: 'stripe-webhook-secret' }
-      { name: 'STRIPE_SUCCESS_URL', value: '${storefrontUrl}/order/success?session_id={CHECKOUT_SESSION_ID}' }
-      { name: 'STRIPE_CANCEL_URL', value: '${storefrontUrl}/cart' }
+      { name: 'RAZORPAY_KEY_ID', secretRef: 'razorpay-key-id' }
+      { name: 'RAZORPAY_KEY_SECRET', secretRef: 'razorpay-key-secret' }
+      { name: 'RAZORPAY_WEBHOOK_SECRET', secretRef: 'razorpay-webhook-secret' }
+      { name: 'RAZORPAY_CALLBACK_URL', value: 'https://${gatewayHostname}/api/payments/razorpay/callback' }
+      { name: 'RAZORPAY_SUCCESS_URL', value: '${storefrontUrl}/order/success' }
+      { name: 'RAZORPAY_CANCEL_URL', value: '${storefrontUrl}/cart' }
     ]
   }
 }

@@ -135,6 +135,9 @@ public class OrderService {
 
     public Order markPaid(String orderNumber) {
         Order order = orderRepository.findByOrderNumber(orderNumber).orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        if (!"PENDING_PAYMENT".equals(order.getOrderStatus())) {
+            return order;
+        }
         order.setOrderStatus("CONFIRMED");
         orderRepository.save(order);
         restClient.post().uri(inventoryUrl + "/internal/inventory/confirm/" + orderNumber)

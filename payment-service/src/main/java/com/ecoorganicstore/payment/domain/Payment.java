@@ -10,7 +10,7 @@ public class Payment {
     @Id private String id;
     @Indexed(unique = true) private String orderNumber;
     private long amountPaise;
-    private String stripeSessionId;
+    private String paymentLinkId;
     private String status;
     private Instant createdAt = Instant.now();
 
@@ -20,8 +20,8 @@ public class Payment {
     public void setOrderNumber(String orderNumber) { this.orderNumber = orderNumber; }
     public long getAmountPaise() { return amountPaise; }
     public void setAmountPaise(long amountPaise) { this.amountPaise = amountPaise; }
-    public String getStripeSessionId() { return stripeSessionId; }
-    public void setStripeSessionId(String stripeSessionId) { this.stripeSessionId = stripeSessionId; }
+    public String getPaymentLinkId() { return paymentLinkId; }
+    public void setPaymentLinkId(String paymentLinkId) { this.paymentLinkId = paymentLinkId; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }

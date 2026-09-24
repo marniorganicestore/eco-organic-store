@@ -151,10 +151,12 @@ services:
       <<: *java-env
       MONGODB_URI: mongodb://root:root@mongo:27017/payment?authSource=admin
       ORDER_SERVICE_URL: http://order-service:8085
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-http://localhost:5173/order/success?session_id={CHECKOUT_SESSION_ID}}
-      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-http://localhost:5173/cart}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      RAZORPAY_CALLBACK_URL: ${RAZORPAY_CALLBACK_URL:-http://localhost:8080/api/payments/razorpay/callback}
+      RAZORPAY_SUCCESS_URL: ${RAZORPAY_SUCCESS_URL:-http://localhost:5173/order/success}
+      RAZORPAY_CANCEL_URL: ${RAZORPAY_CANCEL_URL:-http://localhost:5173/cart}
 
   review-service:
     <<: *app

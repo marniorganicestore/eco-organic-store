@@ -9,7 +9,7 @@ export default function AdminPaymentsPage() {
   const payments = useAdminPayments()
 
   return (
-    <PageShell title="Payments" subtitle="Stripe checkout records. A paid payment confirms the order and the stock hold.">
+    <PageShell title="Payments" subtitle="Razorpay checkout records. A paid payment confirms the order and the stock hold.">
       {payments.isPending ? <AdminPending label="Loading payments..." /> : null}
       {payments.isError ? <FormBanner tone="error">Unable to load payments. Refresh and try again.</FormBanner> : null}
       {payments.data && payments.data.length === 0 ? (

@@ -31,10 +31,10 @@ if (!ctx.isAdmin()) {
 
 ## Auth flows
 
-- Passwords: BCrypt only. Never log tokens, cookies, or Stripe secrets.
+- Passwords: BCrypt only. Never log tokens, cookies, or Razorpay secrets.
 - Access JWT in memory (frontend). Refresh token: **httpOnly** cookie `refreshToken`; `credentials: 'include'` on auth calls.
 - Google: verify ID token (JWKS) in production; do not trust client-supplied `email`/`sub` without verification.
-- Stripe webhook: no JWT. Verify signature when keys are present; persist Stripe event id uniquely so retries are idempotent.
+- Razorpay webhook: no JWT. Verify `X-Razorpay-Signature` when the webhook secret is present; persist the event id uniquely so retries are idempotent. The browser callback is verified with the key secret.
 
 ## Frontend
 
@@ -49,4 +49,4 @@ If brute-force becomes a concern, add it on the **gateway** for `/api/auth/**`. 
 
 ## Secrets
 
-Keep values in `.env` (`JWT_SECRET`, `INTERNAL_API_KEY`, Stripe, Google, admin seed). Commit `.env.example` placeholders only. Never hardcode production secrets in YAML or source.
+Keep values in `.env` (`JWT_SECRET`, `INTERNAL_API_KEY`, Razorpay, Google, admin seed). Commit `.env.example` placeholders only. Never hardcode production secrets in YAML or source.

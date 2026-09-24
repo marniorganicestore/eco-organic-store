@@ -21,7 +21,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/webhooks/stripe", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/api/webhooks/razorpay", "/api/payments/razorpay/callback", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/internal/**").denyAll()
                         .anyRequest().permitAll())
                 .addFilterBefore(jwtRelayFilter, UsernamePasswordAuthenticationFilter.class)
