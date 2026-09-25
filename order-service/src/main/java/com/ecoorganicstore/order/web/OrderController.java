@@ -27,15 +27,15 @@ public class OrderController {
     }
 
     @GetMapping("/api/orders")
-    public List<Order> orders(HttpServletRequest request) {
+    public List<OrderSummaryResponse> orders(HttpServletRequest request) {
         String userId = AuthGuards.requireUser(request).userId();
-        return orderService.ordersByUser(userId);
+        return orderService.ordersByUser(userId).stream().map(OrderController::toSummary).toList();
     }
 
     @GetMapping("/api/orders/{orderNumber}")
-    public Order order(HttpServletRequest request, @PathVariable String orderNumber) {
+    public OrderSummaryResponse order(HttpServletRequest request, @PathVariable String orderNumber) {
         String userId = AuthGuards.requireUser(request).userId();
-        return orderService.orderByNumber(userId, orderNumber);
+        return toSummary(orderService.orderByNumber(userId, orderNumber));
     }
 
     @PostMapping("/internal/orders/{orderNumber}/paid")
@@ -61,27 +61,48 @@ public class OrderController {
         return toAdmin(orderService.updateStatus(orderNumber, statusRequest.status()));
     }
 
-    private static AdminOrderResponse toAdmin(Order order) {
-        List<LineResponse> lines = order.getLines() == null
-                ? List.of()
-                : order.getLines().stream()
-                        .map(line -> new LineResponse(line.productId(), line.productName(), line.pricePaise(), line.qty()))
-                        .toList();
-        return new AdminOrderResponse(
+    private static OrderSummaryResponse toSummary(Order order) {
+        return new OrderSummaryResponse(
                 order.getId(),
                 order.getOrderNumber(),
-                order.getUserId(),
-                lines,
+                linesOf(order),
                 order.getShippingAddress(),
                 order.getTotalPaise(),
                 order.getOrderStatus(),
                 order.getCreatedAt());
     }
 
+    private static AdminOrderResponse toAdmin(Order order) {
+        return new AdminOrderResponse(
+                order.getId(),
+                order.getOrderNumber(),
+                order.getUserId(),
+                linesOf(order),
+                order.getShippingAddress(),
+                order.getTotalPaise(),
+                order.getOrderStatus(),
+                order.getCreatedAt());
+    }
+
+    private static List<LineResponse> linesOf(Order order) {
+        if (order.getLines() == null) return List.of();
+        return order.getLines().stream()
+                .map(line -> new LineResponse(line.productId(), line.productName(), line.pricePaise(), line.qty()))
+                .toList();
+    }
+
     public record CheckoutRequest(String shippingAddress) {}
     public record PurchaseResponse(boolean purchased) {}
     public record StatusRequest(@NotBlank(message = "Choose the next order status.") String status) {}
     public record LineResponse(String productId, String productName, long pricePaise, int qty) {}
+    public record OrderSummaryResponse(
+            String id,
+            String orderNumber,
+            List<LineResponse> lines,
+            String shippingAddress,
+            long totalPaise,
+            String orderStatus,
+            Instant createdAt) {}
     public record AdminOrderResponse(
             String id,
             String orderNumber,

@@ -7,10 +7,13 @@ import com.ecoorganicstore.order.domain.Order;
 import com.ecoorganicstore.order.repo.OrderRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -171,13 +174,11 @@ public class OrderService {
     }
 
     public List<Order> ordersByUser(String userId) {
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        return orderRepository.findByUserId(userId).stream().sorted(NEWEST_FIRST).toList();
     }
 
     public List<Order> allOrders() {
-        return orderRepository.findAll().stream()
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                .toList();
+        return orderRepository.findAll().stream().sorted(NEWEST_FIRST).toList();
     }
 
     public Order orderByNumber(String userId, String orderNumber) {
@@ -202,9 +203,9 @@ public class OrderService {
     }
 
     public boolean userPurchasedProduct(String userId, String productId) {
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+        return orderRepository.findByUserId(userId).stream()
                 .filter(o -> "DELIVERED".equals(o.getOrderStatus()) || "CONFIRMED".equals(o.getOrderStatus()))
-                .flatMap(o -> o.getLines().stream())
+                .flatMap(o -> o.getLines() == null ? Stream.empty() : o.getLines().stream())
                 .anyMatch(l -> l.productId().equals(productId));
     }
 
@@ -215,6 +216,9 @@ public class OrderService {
         orderNotifier.statusChanged(saved);
         return saved;
     }
+
+    private static final Comparator<Order> NEWEST_FIRST =
+            Comparator.comparing(Order::getCreatedAt, Comparator.nullsLast(Comparator.<Instant>reverseOrder()));
 
     public record PaymentSession(String paymentId, String orderId, long amount, String currency, String keyId, String checkoutUrl) {}
 

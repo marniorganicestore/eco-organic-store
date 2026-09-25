@@ -4,12 +4,24 @@ import { storeBtn, storeCard, PageShell } from '../../components/layout/PageShel
 import { AccountSkeleton } from '../../components/account/AccountLayout'
 import { FormBanner } from '../../components/account/FormBanner'
 import { api } from '../../lib/api'
+import { formatInr } from '../../lib/cart'
 import { STORE_MAILBOX } from '../../lib/mail'
+
+type OrderLine = {
+  productId: string
+  productName: string
+  pricePaise: number
+  qty: number
+}
 
 type OrderSummary = {
   id: string
   orderNumber: string
+  lines: OrderLine[]
+  shippingAddress: string
+  totalPaise: number
   orderStatus: string
+  createdAt: string
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -19,6 +31,16 @@ const STATUS_LABEL: Record<string, string> = {
   SHIPPED: 'On the way',
   DELIVERED: 'Delivered',
   CANCELLED: 'Cancelled'
+}
+
+function placedOn(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return 'Placed'
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  }).format(date)
 }
 
 export default function OrdersPage() {
@@ -46,11 +68,27 @@ export default function OrdersPage() {
               Email settings
             </Link>
           </p>
-          <ul className={`${storeCard} space-y-2 p-6`}>
+          <ul className="space-y-3">
             {orders.data.map((order) => (
-              <li key={order.id} className="rounded-xl border border-emerald-100 bg-white/70 p-3 text-sm text-emerald-950">
-                <span className="font-medium">{order.orderNumber}</span>
-                <span className="text-slate-600"> · {STATUS_LABEL[order.orderStatus] ?? order.orderStatus}</span>
+              <li key={order.id} className={`${storeCard} p-4`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-emerald-950">{order.orderNumber}</p>
+                    <p className="text-sm text-slate-600">{placedOn(order.createdAt)} · {formatInr(order.totalPaise)}</p>
+                    {order.shippingAddress ? <p className="mt-1 max-w-xl text-sm text-slate-600">{order.shippingAddress}</p> : null}
+                  </div>
+                  <p className="text-sm font-medium text-emerald-800">{STATUS_LABEL[order.orderStatus] ?? order.orderStatus}</p>
+                </div>
+                {(order.lines ?? []).length > 0 ? (
+                  <ul className="mt-3 space-y-1 text-sm text-emerald-950">
+                    {(order.lines ?? []).map((line) => (
+                      <li key={`${order.id}-${line.productId}`}>
+                        {line.productName} × {line.qty}
+                        <span className="text-slate-600"> · {formatInr(line.pricePaise)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </li>
             ))}
           </ul>
