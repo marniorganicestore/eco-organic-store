@@ -7,8 +7,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("reviews")
 @CompoundIndex(name = "user_product_unique", def = "{'userId':1,'productId':1}", unique = true)
-@CompoundIndex(name = "product_status_created_idx", def = "{'productId':1,'status':1,'createdAt':-1}")
-@CompoundIndex(name = "status_created_idx", def = "{'status':1,'createdAt':-1}")
+@CompoundIndex(name = "created_id_idx", def = "{'createdAt':-1,'_id':-1}")
+@CompoundIndex(name = "product_status_created_idx", def = "{'productId':1,'status':1,'createdAt':-1,'_id':-1}")
+@CompoundIndex(name = "status_created_idx", def = "{'status':1,'createdAt':-1,'_id':-1}")
 public class Review {
     @Id private String id;
     private String userId;

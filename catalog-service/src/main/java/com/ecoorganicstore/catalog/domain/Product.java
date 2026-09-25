@@ -7,8 +7,10 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("products")
-@CompoundIndex(name = "category_active_idx", def = "{'categoryId':1,'active':1}")
-@CompoundIndex(name = "active_name_idx", def = "{'active':1,'name':1}")
+@CompoundIndex(name = "name_id_idx", def = "{'name':1,'_id':1}")
+@CompoundIndex(name = "active_name_idx", def = "{'active':1,'name':1,'_id':1}")
+@CompoundIndex(name = "featured_active_name_idx", def = "{'featured':1,'active':1,'name':1,'_id':1}")
+@CompoundIndex(name = "category_active_name_idx", def = "{'categoryId':1,'active':1,'name':1,'_id':1}")
 public class Product {
     @Id private String id;
     @Indexed(unique = true) private String slug;

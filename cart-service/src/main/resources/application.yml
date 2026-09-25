@@ -5,6 +5,9 @@ spring:
     name: cart-service
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/cart}
+  data:
+    mongodb:
+      auto-index-creation: true
   threads:
     virtual:
       enabled: true

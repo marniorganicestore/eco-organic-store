@@ -5,6 +5,9 @@ spring:
     name: review-service
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/review}
+  data:
+    mongodb:
+      auto-index-creation: true
   threads:
     virtual:
       enabled: true

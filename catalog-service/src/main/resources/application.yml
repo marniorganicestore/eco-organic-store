@@ -9,6 +9,9 @@ spring:
       max-request-size: 2MB
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/catalog}
+  data:
+    mongodb:
+      auto-index-creation: true
   threads:
     virtual:
       enabled: true

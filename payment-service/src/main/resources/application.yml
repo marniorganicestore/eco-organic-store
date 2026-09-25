@@ -5,6 +5,9 @@ spring:
     name: payment-service
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/payment}
+  data:
+    mongodb:
+      auto-index-creation: true
   threads:
     virtual:
       enabled: true

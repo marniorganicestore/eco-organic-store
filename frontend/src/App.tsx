@@ -258,7 +258,7 @@ function Shop() {
     >
       {products.isError || categories.isError ? (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-sm text-amber-900">
-          Unable to load the shop. Verify gateway/API base is reachable.
+          The shop couldn't load just now. Refresh the page to try again.
         </div>
       ) : null}
       {products.isPending ? (

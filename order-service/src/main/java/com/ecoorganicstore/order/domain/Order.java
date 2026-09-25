@@ -8,9 +8,9 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("orders")
-@CompoundIndex(name = "user_created_idx", def = "{'userId':1,'createdAt':-1}")
-@CompoundIndex(name = "status_created_idx", def = "{'orderStatus':1,'createdAt':-1}")
-@CompoundIndex(name = "created_idx", def = "{'createdAt':-1}")
+@CompoundIndex(name = "created_idx", def = "{'createdAt':-1,'_id':-1}")
+@CompoundIndex(name = "user_created_idx", def = "{'userId':1,'createdAt':-1,'_id':-1}")
+@CompoundIndex(name = "status_created_idx", def = "{'orderStatus':1,'createdAt':-1,'_id':-1}")
 public class Order {
     @Id private String id;
     @Indexed(unique = true) private String orderNumber;

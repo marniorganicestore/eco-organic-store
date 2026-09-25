@@ -2,10 +2,12 @@ package com.ecoorganicstore.payment.domain;
 
 import java.time.Instant;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("payments")
+@CompoundIndex(name = "created_id_idx", def = "{'createdAt':-1,'_id':-1}")
 public class Payment {
     @Id private String id;
     @Indexed(unique = true) private String orderNumber;

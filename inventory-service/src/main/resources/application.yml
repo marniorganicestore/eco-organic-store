@@ -5,6 +5,9 @@ spring:
     name: inventory-service
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/inventory}
+  data:
+    mongodb:
+      auto-index-creation: true
   threads:
     virtual:
       enabled: true
