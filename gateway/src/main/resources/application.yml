@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: gateway
+  servlet:
+    multipart:
+      # Stream uploads to identity and catalog. Parsing them here consumes the body,
+      # and POST /api/me/avatar then fails with an unexpected 500.
+      enabled: false
   threads:
     virtual:
       enabled: true
