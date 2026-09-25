@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 
 public interface OrderRepository extends MongoRepository<Order, String> {
     Optional<Order> findByOrderNumber(String orderNumber);
@@ -17,5 +18,7 @@ public interface OrderRepository extends MongoRepository<Order, String> {
 
     Page<Order> findByOrderStatus(String orderStatus, Pageable pageable);
 
-    List<Order> findByCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(Instant start, Instant end);
+    // A derived GreaterThanEqualAndLessThan method writes createdAt twice, which MongoDB rejects.
+    @Query(value = "{ 'createdAt': { $gte: ?0, $lt: ?1 } }", sort = "{ 'createdAt': -1 }")
+    List<Order> findCreatedFromInclusiveUntil(Instant startInclusive, Instant endExclusive);
 }

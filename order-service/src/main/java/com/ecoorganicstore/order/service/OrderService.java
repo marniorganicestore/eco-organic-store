@@ -192,7 +192,7 @@ public class OrderService {
         LocalDate day = LocalDate.ofInstant(now == null ? Instant.now() : now, zone);
         Instant start = day.atStartOfDay(zone).toInstant();
         Instant end = day.plusDays(1).atStartOfDay(zone).toInstant();
-        List<Order> today = orderRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(start, end);
+        List<Order> today = orderRepository.findCreatedFromInclusiveUntil(start, end);
         long todayTotal = today.stream().mapToLong(Order::getTotalPaise).sum();
         Page<Order> confirmed = orderRepository.findByOrderStatus("CONFIRMED", newest(0, 5, 5));
         return new OrderDesk(
