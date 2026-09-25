@@ -130,6 +130,7 @@ module identityService 'modules/container-app.bicep' = {
       { name: 'MAIL_FROM', value: 'admin@eco-organic-store.com' }
       { name: 'MAIL_FROM_NAME', value: 'Marni eco organic store' }
       { name: 'MAIL_ADMIN', value: 'admin@eco-organic-store.com' }
+      { name: 'SPRING_DATA_MONGODB_AUTO_INDEX_CREATION', value: 'false' }
     ]
   }
 }
@@ -151,6 +152,7 @@ module catalogService 'modules/container-app.bicep' = {
     envVars: [
       { name: 'INTERNAL_API_KEY', secretRef: 'internal-api-key' }
       { name: 'MONGODB_URI', secretRef: 'cosmos-catalog-uri' }
+      { name: 'SPRING_DATA_MONGODB_AUTO_INDEX_CREATION', value: 'false' }
     ]
   }
 }
@@ -174,6 +176,7 @@ module cartService 'modules/container-app.bicep' = {
       { name: 'MONGODB_URI', secretRef: 'cosmos-cart-uri' }
       { name: 'CATALOG_SERVICE_URL', value: catalogUrl }
       { name: 'INVENTORY_SERVICE_URL', value: inventoryUrl }
+      { name: 'SPRING_DATA_MONGODB_AUTO_INDEX_CREATION', value: 'false' }
     ]
   }
 }
@@ -195,6 +198,7 @@ module inventoryService 'modules/container-app.bicep' = {
     envVars: [
       { name: 'INTERNAL_API_KEY', secretRef: 'internal-api-key' }
       { name: 'MONGODB_URI', secretRef: 'cosmos-inventory-uri' }
+      { name: 'SPRING_DATA_MONGODB_AUTO_INDEX_CREATION', value: 'false' }
     ]
   }
 }
@@ -221,6 +225,7 @@ module orderService 'modules/container-app.bicep' = {
       { name: 'CATALOG_SERVICE_URL', value: catalogUrl }
       { name: 'PAYMENT_SERVICE_URL', value: paymentUrl }
       { name: 'IDENTITY_SERVICE_URL', value: identityUrl }
+      { name: 'SPRING_DATA_MONGODB_AUTO_INDEX_CREATION', value: 'false' }
     ]
   }
 }
@@ -252,6 +257,7 @@ module paymentService 'modules/container-app.bicep' = {
       { name: 'RAZORPAY_CALLBACK_URL', value: 'https://${gatewayHostname}/api/payments/razorpay/callback' }
       { name: 'RAZORPAY_SUCCESS_URL', value: '${storefrontUrl}/order/success' }
       { name: 'RAZORPAY_CANCEL_URL', value: '${storefrontUrl}/cart' }
+      { name: 'SPRING_DATA_MONGODB_AUTO_INDEX_CREATION', value: 'false' }
     ]
   }
 }
@@ -275,6 +281,7 @@ module reviewService 'modules/container-app.bicep' = {
       { name: 'MONGODB_URI', secretRef: 'cosmos-review-uri' }
       { name: 'ORDER_SERVICE_URL', value: orderUrl }
       { name: 'CATALOG_SERVICE_URL', value: catalogUrl }
+      { name: 'SPRING_DATA_MONGODB_AUTO_INDEX_CREATION', value: 'false' }
     ]
   }
 }
