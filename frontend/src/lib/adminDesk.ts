@@ -79,6 +79,7 @@ export type AdminOrderLine = {
   productName: string
   pricePaise: number
   qty: number
+  image?: string | null
 }
 
 export type AdminOrder = {

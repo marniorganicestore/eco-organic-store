@@ -3,21 +3,15 @@ import { useQuery } from '@tanstack/react-query'
 import { storeBtn, storeCard, PageShell } from '../../components/layout/PageShell'
 import { AccountSkeleton } from '../../components/account/AccountLayout'
 import { FormBanner } from '../../components/account/FormBanner'
+import { OrderLineRow, type OrderLineView } from '../../components/order/OrderLineRow'
 import { api } from '../../lib/api'
 import { formatInr } from '../../lib/cart'
 import { STORE_MAILBOX } from '../../lib/mail'
 
-type OrderLine = {
-  productId: string
-  productName: string
-  pricePaise: number
-  qty: number
-}
-
 type OrderSummary = {
   id: string
   orderNumber: string
-  lines: OrderLine[]
+  lines: OrderLineView[]
   shippingAddress: string
   totalPaise: number
   orderStatus: string
@@ -80,12 +74,9 @@ export default function OrdersPage() {
                   <p className="text-sm font-medium text-emerald-800">{STATUS_LABEL[order.orderStatus] ?? order.orderStatus}</p>
                 </div>
                 {(order.lines ?? []).length > 0 ? (
-                  <ul className="mt-3 space-y-1 text-sm text-emerald-950">
+                  <ul className="mt-3 space-y-2">
                     {(order.lines ?? []).map((line) => (
-                      <li key={`${order.id}-${line.productId}`}>
-                        {line.productName} × {line.qty}
-                        <span className="text-slate-600"> · {formatInr(line.pricePaise)}</span>
-                      </li>
+                      <OrderLineRow key={`${order.id}-${line.productId}`} line={line} />
                     ))}
                   </ul>
                 ) : null}

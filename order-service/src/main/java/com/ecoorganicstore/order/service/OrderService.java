@@ -3,6 +3,7 @@ package com.ecoorganicstore.order.service;
 import com.ecoorganicstore.common.web.ForbiddenException;
 import com.ecoorganicstore.common.web.UnauthorizedException;
 import com.ecoorganicstore.order.domain.Fulfillment;
+import com.ecoorganicstore.order.domain.LineImage;
 import com.ecoorganicstore.order.domain.Order;
 import com.ecoorganicstore.order.repo.OrderRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -64,7 +65,7 @@ public class OrderService {
             long price = ((Number) product.get("pricePaise")).longValue();
             String name = String.valueOf(product.get("name"));
             total += price * qty;
-            lines.add(new Order.Line(productId, name, price, qty));
+            lines.add(new Order.Line(productId, name, price, qty, LineImage.snapshot(product.get("images"))));
             reserveLines.add(Map.of("productId", productId, "qty", qty));
         }
 

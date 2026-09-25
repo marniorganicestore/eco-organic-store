@@ -9,7 +9,7 @@ const orders = [
     id: 'o1',
     orderNumber: 'ECO-1001',
     userId: 'u1',
-    lines: [{ productId: 'p1', productName: 'Organic Baby Spinach', pricePaise: 17900, qty: 1 }],
+    lines: [{ productId: 'p1', productName: 'Organic Baby Spinach', pricePaise: 17900, qty: 1, image: 'https://images.example/spinach.jpg' }],
     shippingAddress: '12 Farm Road, Mysuru',
     totalPaise: 17900,
     orderStatus: 'CONFIRMED',
@@ -61,6 +61,7 @@ describe('AdminOrdersPage', () => {
     renderPage()
 
     expect(await screen.findByRole('button', { name: 'Mark packed' })).toBeTruthy()
+    expect(document.querySelector('img[src="https://images.example/spinach.jpg"]')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Mark shipped' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Mark packed' }))
 

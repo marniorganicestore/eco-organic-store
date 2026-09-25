@@ -87,14 +87,14 @@ public class OrderController {
     private static List<LineResponse> linesOf(Order order) {
         if (order.getLines() == null) return List.of();
         return order.getLines().stream()
-                .map(line -> new LineResponse(line.productId(), line.productName(), line.pricePaise(), line.qty()))
+                .map(line -> new LineResponse(line.productId(), line.productName(), line.pricePaise(), line.qty(), line.image()))
                 .toList();
     }
 
     public record CheckoutRequest(String shippingAddress) {}
     public record PurchaseResponse(boolean purchased) {}
     public record StatusRequest(@NotBlank(message = "Choose the next order status.") String status) {}
-    public record LineResponse(String productId, String productName, long pricePaise, int qty) {}
+    public record LineResponse(String productId, String productName, long pricePaise, int qty, String image) {}
     public record OrderSummaryResponse(
             String id,
             String orderNumber,

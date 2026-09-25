@@ -6,6 +6,7 @@ import { AdminPending } from '../../components/admin/AdminPending'
 import { StatusPill } from '../../components/admin/StatusPill'
 import { FormBanner } from '../../components/account/FormBanner'
 import { PageShell, storeBtn, storeCard } from '../../components/layout/PageShell'
+import { OrderLineRow } from '../../components/order/OrderLineRow'
 
 export default function AdminOrdersPage() {
   const orders = useAdminOrders()
@@ -59,12 +60,9 @@ export default function AdminOrdersPage() {
                     ) : null}
                   </div>
                 </div>
-                <ul className="mt-3 space-y-1 text-sm text-emerald-950">
+                <ul className="mt-3 space-y-2">
                   {order.lines.map((line) => (
-                    <li key={`${order.id}-${line.productId}`}>
-                      {line.productName} × {line.qty}
-                      <span className="text-slate-600"> · {formatInr(line.pricePaise)}</span>
-                    </li>
+                    <OrderLineRow key={`${order.id}-${line.productId}`} line={line} />
                   ))}
                 </ul>
               </li>

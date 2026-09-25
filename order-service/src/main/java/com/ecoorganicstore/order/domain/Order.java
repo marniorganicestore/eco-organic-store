@@ -40,5 +40,5 @@ public class Order {
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public record Line(String productId, String productName, long pricePaise, int qty) {}
+    public record Line(String productId, String productName, long pricePaise, int qty, String image) {}
 }
