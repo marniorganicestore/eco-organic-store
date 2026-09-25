@@ -1,12 +1,15 @@
 package com.ecoorganicstore.identity.service;
 
+import com.ecoorganicstore.common.web.PageResponse;
+import com.ecoorganicstore.common.web.PageWindow;
 import com.ecoorganicstore.identity.domain.AccountRoles;
 import com.ecoorganicstore.identity.domain.User;
 import com.ecoorganicstore.identity.repo.UserRepository;
 import com.ecoorganicstore.identity.web.AdminUserDtos.AdminUserResponse;
 import com.ecoorganicstore.identity.web.AdminUserDtos.UpdateUserAccessRequest;
-import java.util.Comparator;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,13 +20,12 @@ public class AccountAccessService {
         this.userRepository = userRepository;
     }
 
-    public List<AdminUserResponse> list() {
-        return userRepository.findAll().stream()
-                .sorted(Comparator.comparing(
-                        user -> user.getEmail() == null ? "" : user.getEmail(),
-                        String.CASE_INSENSITIVE_ORDER))
-                .map(AccountAccessService::toResponse)
-                .toList();
+    public PageResponse<AdminUserResponse> list(int page, int size) {
+        int safePage = PageWindow.page(page);
+        int safeSize = PageWindow.size(size, PageWindow.ADMIN_SIZE);
+        var result = userRepository.findAll(PageRequest.of(safePage, safeSize, Sort.by(Sort.Order.asc("email"), Sort.Order.asc("id"))));
+        List<AdminUserResponse> items = result.getContent().stream().map(AccountAccessService::toResponse).toList();
+        return PageResponse.of(items, safePage, safeSize, result.getTotalElements());
     }
 
     public AdminUserResponse update(String actorId, String userId, UpdateUserAccessRequest request) {

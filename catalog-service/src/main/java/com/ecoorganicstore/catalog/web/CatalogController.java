@@ -10,9 +10,14 @@ import com.ecoorganicstore.catalog.web.CatalogAdminDtos.CategoryWriteRequest;
 import com.ecoorganicstore.catalog.web.CatalogAdminDtos.ProductResponse;
 import com.ecoorganicstore.catalog.web.CatalogAdminDtos.ProductWriteRequest;
 import com.ecoorganicstore.common.security.AuthGuards;
+import com.ecoorganicstore.common.web.PageResponse;
+import com.ecoorganicstore.common.web.PageWindow;
+import com.ecoorganicstore.common.web.SearchText;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,16 +41,16 @@ public class CatalogController {
     }
 
     @GetMapping("/api/products")
-    public List<Product> products(@RequestParam(required = false) String search,
-                                  @RequestParam(required = false) String category,
-                                  @RequestParam(required = false, defaultValue = "false") boolean featured) {
-        if (featured) return productRepository.findByFeaturedTrueAndActiveTrue();
-        if (search != null && !search.isBlank()) return productRepository.findByNameContainingIgnoreCaseAndActiveTrue(search);
-        if (category != null && !category.isBlank()) {
-            var cat = categoryRepository.findBySlug(category).orElseThrow(() -> new IllegalArgumentException("Category not found"));
-            return productRepository.findByCategoryIdAndActiveTrue(cat.getId());
-        }
-        return productRepository.findByActiveTrue();
+    public PageResponse<Product> products(@RequestParam(required = false) String search,
+                                          @RequestParam(required = false) String category,
+                                          @RequestParam(required = false, defaultValue = "false") boolean featured,
+                                          @RequestParam(defaultValue = "0") int page,
+                                          @RequestParam(defaultValue = "12") int size) {
+        int safePage = PageWindow.page(page);
+        int safeSize = PageWindow.size(size, PageWindow.SHOP_SIZE);
+        var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id")));
+        var result = browse(search, category, featured, pageable);
+        return PageResponse.of(result.getContent(), safePage, safeSize, result.getTotalElements());
     }
 
     @GetMapping("/api/products/{slug}")
@@ -94,10 +99,25 @@ public class CatalogController {
         catalogAdminService.deleteProduct(id);
     }
 
-    @GetMapping("/api/admin/catalog/products")
-    public List<ProductResponse> adminProducts(HttpServletRequest request) {
+    @GetMapping("/api/admin/catalog/summary")
+    public CatalogAdminService.CatalogDeskSummary adminSummary(HttpServletRequest request) {
         ensureAdmin(request);
-        return catalogAdminService.products();
+        return catalogAdminService.summary();
+    }
+
+    @GetMapping("/api/admin/catalog/products/lookup")
+    public List<ProductResponse> lookupProducts(HttpServletRequest request, @RequestParam List<String> ids) {
+        ensureAdmin(request);
+        return catalogAdminService.findByIds(ids);
+    }
+
+    @GetMapping("/api/admin/catalog/products")
+    public PageResponse<ProductResponse> adminProducts(HttpServletRequest request,
+                                                       @RequestParam(defaultValue = "0") int page,
+                                                       @RequestParam(defaultValue = "20") int size,
+                                                       @RequestParam(required = false) String q) {
+        ensureAdmin(request);
+        return catalogAdminService.products(page, size, q);
     }
 
     @GetMapping("/api/admin/catalog/categories")
@@ -124,6 +144,18 @@ public class CatalogController {
     public void deleteCategory(HttpServletRequest request, @PathVariable String id) {
         ensureAdmin(request);
         catalogAdminService.deleteCategory(id);
+    }
+
+    private org.springframework.data.domain.Page<Product> browse(String search, String category, boolean featured,
+                                                                  org.springframework.data.domain.Pageable pageable) {
+        if (featured) return productRepository.findByFeaturedTrueAndActiveTrue(pageable);
+        String query = SearchText.clip(search);
+        if (!query.isEmpty()) return productRepository.findByNameContainingIgnoreCaseAndActiveTrue(query, pageable);
+        if (category != null && !category.isBlank()) {
+            var cat = categoryRepository.findBySlug(category.trim()).orElseThrow(() -> new IllegalArgumentException("Category not found"));
+            return productRepository.findByCategoryIdAndActiveTrue(cat.getId(), pageable);
+        }
+        return productRepository.findByActiveTrue(pageable);
     }
 
     private static void ensureAdmin(HttpServletRequest request) {

@@ -41,9 +41,9 @@ public class InventoryController {
     }
 
     @GetMapping("/api/admin/inventory")
-    public List<AdminStockResponse> inventory(HttpServletRequest request) {
+    public List<AdminStockResponse> inventory(HttpServletRequest request, @RequestParam List<String> productIds) {
         ensureAdmin(request);
-        return inventoryService.list().stream().map(InventoryController::toAdmin).toList();
+        return inventoryService.forProducts(productIds).stream().map(InventoryController::toAdmin).toList();
     }
 
     @PatchMapping("/api/admin/inventory/{productId}")
@@ -54,9 +54,11 @@ public class InventoryController {
     }
 
     @GetMapping("/api/admin/inventory/low-stock")
-    public List<StockView> lowStock(HttpServletRequest request, @RequestParam(defaultValue = "10") int threshold) {
+    public LowStockResponse lowStock(HttpServletRequest request, @RequestParam(defaultValue = "10") int threshold) {
         ensureAdmin(request);
-        return inventoryService.getLowStock(threshold).stream().map(s -> new StockView(s.getProductId(), s.available())).toList();
+        InventoryService.LowStockReport report = inventoryService.lowStock(threshold);
+        List<StockView> items = report.items().stream().map(s -> new StockView(s.getProductId(), s.available())).toList();
+        return new LowStockResponse(report.count(), items);
     }
 
     private static AdminStockResponse toAdmin(Stock stock) {
@@ -71,6 +73,7 @@ public class InventoryController {
     public record AdjustRequest(
             @NotNull(message = "Enter the on-hand quantity.")
             @Min(value = 0, message = "On-hand quantity cannot be negative.") Integer onHand) {}
+    public record LowStockResponse(long count, List<StockView> items) {}
     public record StockView(String productId, int available) {}
     public record AdminStockResponse(String productId, int onHand, int reserved, int available) {}
 }

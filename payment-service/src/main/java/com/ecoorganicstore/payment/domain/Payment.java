@@ -12,8 +12,8 @@ public class Payment {
     private long amountPaise;
     private String paymentLinkId;
     @Indexed(unique = true, sparse = true) private String razorpayOrderId;
-    private String status;
-    private Instant createdAt = Instant.now();
+    @Indexed private String status;
+    @Indexed private Instant createdAt = Instant.now();
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }

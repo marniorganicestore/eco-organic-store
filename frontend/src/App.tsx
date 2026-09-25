@@ -1,6 +1,6 @@
-import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, authApi, api } from './lib/api'
 import { RequireAdmin, RequireAuth } from './components/auth/RequireAuth'
 import LoginPage from './pages/LoginPage'
@@ -37,6 +37,9 @@ import AdminPaymentsPage from './pages/admin/AdminPaymentsPage'
 import AdminReviewsPage from './pages/admin/AdminReviewsPage'
 import AdminPeoplePage from './pages/admin/AdminPeoplePage'
 import { storeBtn, storeBtnGhost, storeCard, storeInput, PageShell } from './components/layout/PageShell'
+import { Pager } from './components/layout/Pager'
+import { REVIEW_PAGE_SIZE, SHOP_PAGE_SIZE, pageQuery, type PageResult } from './lib/page'
+import { useClampPage } from './hooks/useClampPage'
 import { resolveImageSrc } from './lib/media'
 
 type Product = {
@@ -211,34 +214,31 @@ function Home() {
 }
 
 function Shop() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [category, setCategory] = useState('')
-  const [loadError, setLoadError] = useState<string>('')
+  const [params, setParams] = useSearchParams()
+  const category = params.get('category') ?? ''
+  const page = Math.max(0, Number(params.get('page') ?? '0') || 0)
+  const categories = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api.get<Category[]>('/categories')
+  })
+  const products = useQuery({
+    queryKey: ['products', category, page],
+    queryFn: () => api.get<PageResult<Product>>(`/products${pageQuery(page, SHOP_PAGE_SIZE, { category: category || undefined })}`)
+  })
+  const rows = products.data?.items ?? []
+  const goToPage = useCallback((next: number) => {
+    const query: Record<string, string> = {}
+    if (category) query.category = category
+    if (next > 0) query.page = String(next)
+    setParams(query)
+  }, [category, setParams])
+  useClampPage(page, products.data?.totalPages, goToPage)
 
-  useEffect(() => {
-    api.get<Category[]>('/categories')
-      .then((data) => {
-        setCategories(data)
-        setLoadError('')
-      })
-      .catch(() => {
-        setCategories([])
-        setLoadError('Unable to load categories. Verify gateway/API base is reachable.')
-      })
-  }, [])
-  useEffect(() => {
-    const q = category ? `?category=${category}` : ''
-    api.get<Product[]>(`/products${q}`)
-      .then((data) => {
-        setProducts(data)
-        setLoadError('')
-      })
-      .catch(() => {
-        setProducts([])
-        setLoadError('Unable to load products. Verify gateway/API base is reachable.')
-      })
-  }, [category])
+  function chooseCategory(next: string) {
+    const query: Record<string, string> = {}
+    if (next) query.category = next
+    setParams(query)
+  }
 
   return (
     <PageShell
@@ -248,26 +248,47 @@ function Shop() {
         <select
           className={`${storeInput} w-56`}
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) => chooseCategory(e.target.value)}
           aria-label="Filter by category"
         >
           <option value="">All categories</option>
-          {categories.map((c) => <option key={c.id} value={c.slug}>{c.name}</option>)}
+          {(categories.data ?? []).map((c) => <option key={c.id} value={c.slug}>{c.name}</option>)}
         </select>
       )}
     >
-      {loadError ? (
+      {products.isError || categories.isError ? (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-sm text-amber-900">
-          {loadError}
+          Unable to load the shop. Verify gateway/API base is reachable.
         </div>
       ) : null}
-      {products.length === 0 && !loadError ? (
-        <p className={`${storeCard} p-8 text-sm text-slate-600`}>No products in this category yet.</p>
-      ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((p) => <ProductCard key={p.id} p={p} />)}
+      {products.isPending ? (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+          <p className="sr-only">Loading products...</p>
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className={`${storeCard} h-72 animate-pulse bg-emerald-50/70`} />
+          ))}
         </div>
-      )}
+      ) : null}
+      {products.data && rows.length === 0 ? (
+        <p className={`${storeCard} p-8 text-sm text-slate-600`}>No products in this category yet.</p>
+      ) : null}
+      {rows.length > 0 ? (
+        <>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {rows.map((p) => <ProductCard key={p.id} p={p} />)}
+          </div>
+          {products.data ? (
+            <Pager
+              page={products.data.page}
+              size={products.data.size}
+              totalElements={products.data.totalElements}
+              totalPages={products.data.totalPages}
+              onPage={goToPage}
+              label="Shop pages"
+            />
+          ) : null}
+        </>
+      ) : null}
     </PageShell>
   )
 }
@@ -286,16 +307,22 @@ function ProductCard({ p }: { p: Product }) {
   )
 }
 
+type Review = { id: string; rating: number; body: string }
+
 function ProductPage() {
   const { slug } = useParams()
   const [product, setProduct] = useState<Product | null>(null)
-  const [reviews, setReviews] = useState<any[]>([])
+  const [reviewPage, setReviewPage] = useState(0)
+  const reviews = useQuery({
+    queryKey: ['reviews', product?.id, reviewPage],
+    queryFn: () => api.get<PageResult<Review>>(`/products/${product?.id}/reviews${pageQuery(reviewPage, REVIEW_PAGE_SIZE)}`),
+    enabled: Boolean(product?.id)
+  })
+  useClampPage(reviewPage, reviews.data?.totalPages, setReviewPage)
   useEffect(() => {
+    setReviewPage(0)
     api.get<Product>(`/products/${slug}`).then(setProduct)
   }, [slug])
-  useEffect(() => {
-    if (product) api.get<any[]>(`/products/${product.id}/reviews`).then(setReviews)
-  }, [product])
   if (!product) return <p className="text-sm text-emerald-900/80">Loading...</p>
   const current = product
 
@@ -310,9 +337,19 @@ function ProductPage() {
         </div>
         <div className={`${storeCard} p-6 md:col-span-2`}>
           <h3 className="mb-3 text-lg font-semibold text-emerald-950">Reviews</h3>
-          {reviews.length === 0
-            ? <p className="text-sm text-slate-500">No reviews yet.</p>
-            : reviews.map((r) => <p key={r.id} className="mb-2 text-sm">{r.rating}★ {r.body}</p>)}
+          {reviews.data && reviews.data.items.length === 0 ? <p className="text-sm text-slate-500">No reviews yet.</p> : null}
+          {reviews.isPending && product ? <p className="text-sm text-slate-500">Loading reviews...</p> : null}
+          {(reviews.data?.items ?? []).map((r) => <p key={r.id} className="mb-2 text-sm">{r.rating}★ {r.body}</p>)}
+          {reviews.data ? (
+            <Pager
+              page={reviews.data.page}
+              size={reviews.data.size}
+              totalElements={reviews.data.totalElements}
+              totalPages={reviews.data.totalPages}
+              onPage={setReviewPage}
+              label="Review pages"
+            />
+          ) : null}
         </div>
       </section>
     </PageShell>

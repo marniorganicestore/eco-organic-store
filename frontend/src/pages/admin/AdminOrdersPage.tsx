@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { ApiError } from '../../lib/api'
 import { formatInr, formatWhen, nextFulfillment } from '../../lib/adminDesk'
 import { useAdvanceOrder, useAdminOrders } from '../../hooks/useAdminOrders'
+import { Pager } from '../../components/layout/Pager'
+import { useClampPage } from '../../hooks/useClampPage'
 import { AdminPending } from '../../components/admin/AdminPending'
 import { StatusPill } from '../../components/admin/StatusPill'
 import { FormBanner } from '../../components/account/FormBanner'
@@ -9,7 +11,10 @@ import { PageShell, storeBtn, storeCard } from '../../components/layout/PageShel
 import { OrderLineRow } from '../../components/order/OrderLineRow'
 
 export default function AdminOrdersPage() {
-  const orders = useAdminOrders()
+  const [page, setPage] = useState(0)
+  const orders = useAdminOrders(page)
+  const rows = orders.data?.items ?? []
+  useClampPage(page, orders.data?.totalPages, setPage)
   const advance = useAdvanceOrder()
   const [error, setError] = useState('')
   const pendingNumber = advance.isPending ? advance.variables?.orderNumber : undefined
@@ -31,12 +36,12 @@ export default function AdminOrdersPage() {
       {orders.isPending ? <AdminPending label="Loading orders..." /> : null}
       {orders.isError ? <FormBanner tone="error">Unable to load orders. Refresh and try again.</FormBanner> : null}
       {error ? <div className="mb-4"><FormBanner tone="error">{error}</FormBanner></div> : null}
-      {orders.data && orders.data.length === 0 ? (
+      {orders.data && rows.length === 0 ? (
         <p className={`${storeCard} p-6 text-sm text-slate-600`}>No orders yet. They appear here after checkout.</p>
       ) : null}
-      {orders.data && orders.data.length > 0 ? (
+      {rows.length > 0 ? (
         <ul className="space-y-3">
-          {orders.data.map((order) => {
+          {rows.map((order) => {
             const next = nextFulfillment(order.orderStatus)
             return (
               <li key={order.id} className={`${storeCard} p-4`}>
@@ -69,6 +74,16 @@ export default function AdminOrdersPage() {
             )
           })}
         </ul>
+      ) : null}
+      {orders.data ? (
+        <Pager
+          page={orders.data.page}
+          size={orders.data.size}
+          totalElements={orders.data.totalElements}
+          totalPages={orders.data.totalPages}
+          onPage={setPage}
+          label="Order pages"
+        />
       ) : null}
     </PageShell>
   )

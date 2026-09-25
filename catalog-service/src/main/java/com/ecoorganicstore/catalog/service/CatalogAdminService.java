@@ -8,11 +8,18 @@ import com.ecoorganicstore.catalog.web.CatalogAdminDtos.CategoryResponse;
 import com.ecoorganicstore.catalog.web.CatalogAdminDtos.CategoryWriteRequest;
 import com.ecoorganicstore.catalog.web.CatalogAdminDtos.ProductResponse;
 import com.ecoorganicstore.catalog.web.CatalogAdminDtos.ProductWriteRequest;
+import com.ecoorganicstore.common.web.PageResponse;
+import com.ecoorganicstore.common.web.PageWindow;
+import com.ecoorganicstore.common.web.SearchText;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -28,12 +35,35 @@ public class CatalogAdminService {
         this.categoryRepository = categoryRepository;
     }
 
-    public List<ProductResponse> products() {
-        return productRepository.findAll().stream()
-                .sorted(Comparator.comparing(Product::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
-                .map(CatalogAdminService::toResponse)
-                .toList();
+    public PageResponse<ProductResponse> products(int page, int size, String query) {
+        int safePage = PageWindow.page(page);
+        int safeSize = PageWindow.size(size, PageWindow.ADMIN_SIZE);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id")));
+        String pattern = SearchText.literal(query);
+        Page<Product> result = pattern.isEmpty()
+                ? productRepository.findAll(pageable)
+                : productRepository.searchByText(pattern, pageable);
+        List<ProductResponse> items = result.getContent().stream().map(CatalogAdminService::toResponse).toList();
+        return PageResponse.of(items, safePage, safeSize, result.getTotalElements());
     }
+
+    public List<ProductResponse> findByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        List<String> distinct = ids.stream()
+                .filter(id -> id != null && !id.isBlank())
+                .map(String::trim)
+                .distinct()
+                .limit(PageWindow.MAX_SIZE)
+                .toList();
+        if (distinct.isEmpty()) return List.of();
+        return productRepository.findAllById(distinct).stream().map(CatalogAdminService::toResponse).toList();
+    }
+
+    public CatalogDeskSummary summary() {
+        return new CatalogDeskSummary(productRepository.count(), categoryRepository.count());
+    }
+
+    public record CatalogDeskSummary(long productCount, long categoryCount) {}
 
     public ProductResponse createProduct(ProductWriteRequest request) {
         String name = request.name().trim();

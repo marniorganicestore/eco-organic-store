@@ -1,6 +1,7 @@
 package com.ecoorganicstore.payment.web;
 
 import com.ecoorganicstore.common.security.AuthGuards;
+import com.ecoorganicstore.common.web.PageResponse;
 import com.ecoorganicstore.payment.domain.Payment;
 import com.ecoorganicstore.payment.service.PaymentService;
 import com.ecoorganicstore.payment.service.PaymentService.SessionResponse;
@@ -10,7 +11,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -67,20 +67,32 @@ public class PaymentController {
         return ResponseEntity.status(302).location(target).build();
     }
 
-    @GetMapping("/api/admin/payments")
-    public List<PaymentView> payments(HttpServletRequest request) {
+    @GetMapping("/api/admin/payments/summary")
+    public PaymentDeskResponse paymentSummary(HttpServletRequest request) {
         AuthGuards.requireAdmin(request);
-        return paymentService.list().stream()
-                .sorted(Comparator.comparing(Payment::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(payment -> new PaymentView(
-                        payment.getId(),
-                        payment.getOrderNumber(),
-                        payment.getAmountPaise(),
-                        payment.getStatus(),
-                        payment.getCreatedAt()))
-                .toList();
+        return new PaymentDeskResponse(paymentService.pendingCount());
     }
 
+    @GetMapping("/api/admin/payments")
+    public PageResponse<PaymentView> payments(HttpServletRequest request,
+                                              @RequestParam(defaultValue = "0") int page,
+                                              @RequestParam(defaultValue = "20") int size) {
+        AuthGuards.requireAdmin(request);
+        var result = paymentService.list(page, size);
+        List<PaymentView> items = result.getContent().stream().map(PaymentController::toView).toList();
+        return PageResponse.of(items, result.getNumber(), result.getSize(), result.getTotalElements());
+    }
+
+    private static PaymentView toView(Payment payment) {
+        return new PaymentView(
+                payment.getId(),
+                payment.getOrderNumber(),
+                payment.getAmountPaise(),
+                payment.getStatus(),
+                payment.getCreatedAt());
+    }
+
+    public record PaymentDeskResponse(long pendingCount) {}
     public record SessionRequest(String orderNumber, long amountPaise) {}
 
     public record VerifyRequest(

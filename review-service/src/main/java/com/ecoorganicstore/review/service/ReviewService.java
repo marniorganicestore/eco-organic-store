@@ -1,13 +1,16 @@
 package com.ecoorganicstore.review.service;
 
+import com.ecoorganicstore.common.web.PageWindow;
 import com.ecoorganicstore.review.domain.Review;
 import com.ecoorganicstore.review.repo.ReviewRepository;
 import com.ecoorganicstore.common.web.UnauthorizedException;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -48,17 +51,18 @@ public class ReviewService {
         return review;
     }
 
-    public List<Review> byProduct(String productId) {
-        return reviewRepository.findByProductIdAndStatus(productId, "VISIBLE");
+    public Page<Review> byProduct(String productId, int page, int size) {
+        return reviewRepository.findByProductIdAndStatus(productId, "VISIBLE", newest(page, size, PageWindow.REVIEW_SIZE));
     }
 
-    public List<Review> forAdmin(String status) {
-        List<Review> reviews = status == null || status.isBlank()
-                ? reviewRepository.findAll()
-                : reviewRepository.findByStatus(normalizeStatus(status));
-        return reviews.stream()
-                .sorted(Comparator.comparing(Review::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                .toList();
+    public Page<Review> forAdmin(String status, int page, int size) {
+        var pageable = newest(page, size, PageWindow.ADMIN_SIZE);
+        if (status == null || status.isBlank()) return reviewRepository.findAll(pageable);
+        return reviewRepository.findByStatus(normalizeStatus(status), pageable);
+    }
+
+    public long hiddenCount() {
+        return reviewRepository.countByStatus("HIDDEN");
     }
 
     public Review setStatus(String reviewId, String status) {
@@ -67,6 +71,13 @@ public class ReviewService {
         review = reviewRepository.save(review);
         recalculate(review.getProductId());
         return review;
+    }
+
+    private static PageRequest newest(int page, int size, int fallback) {
+        return PageRequest.of(
+                PageWindow.page(page),
+                PageWindow.size(size, fallback),
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
     }
 
     private static String normalizeStatus(String status) {

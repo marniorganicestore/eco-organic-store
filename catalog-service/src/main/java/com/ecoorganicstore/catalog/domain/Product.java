@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("products")
 @CompoundIndex(name = "category_active_idx", def = "{'categoryId':1,'active':1}")
+@CompoundIndex(name = "active_name_idx", def = "{'active':1,'name':1}")
 public class Product {
     @Id private String id;
     @Indexed(unique = true) private String slug;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ApiError } from '../../lib/api'
 import {
   categoryToDraft,
@@ -24,19 +24,31 @@ import { CategoryForm } from '../../components/admin/CategoryForm'
 import { ProductForm } from '../../components/admin/ProductForm'
 import { StatusPill } from '../../components/admin/StatusPill'
 import { FormBanner } from '../../components/account/FormBanner'
+import { Pager } from '../../components/layout/Pager'
+import { useClampPage } from '../../hooks/useClampPage'
 import { PageShell, storeBtn, storeBtnGhost, storeCard, storeInput } from '../../components/layout/PageShell'
 
 type ProductEditor = { id?: string; draft: ProductDraft }
 type CategoryEditor = { id?: string; draft: CategoryDraft }
 
 export default function AdminCatalogPage() {
-  const products = useAdminProducts()
+  const [page, setPage] = useState(0)
+  const [q, setQ] = useState('')
+  const products = useAdminProducts(page, q)
   const categories = useAdminCategories()
   const saveProduct = useSaveProduct()
   const removeProduct = useDeleteProduct()
   const saveCategory = useSaveCategory()
   const removeCategory = useDeleteCategory()
   const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setQ(query.trim())
+      setPage(0)
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [query])
   const [productEditor, setProductEditor] = useState<ProductEditor | null>(null)
   const [categoryEditor, setCategoryEditor] = useState<CategoryEditor | null>(null)
   const [productError, setProductError] = useState('')
@@ -50,10 +62,8 @@ export default function AdminCatalogPage() {
     return names
   }, [categories.data])
 
-  const visible = (products.data ?? []).filter((product) => {
-    const haystack = `${product.name} ${product.slug} ${product.origin}`.toLowerCase()
-    return haystack.includes(query.trim().toLowerCase())
-  })
+  const visible = products.data?.items ?? []
+  useClampPage(page, products.data?.totalPages, setPage)
 
   async function submitProduct(draft: ProductDraft) {
     setProductError('')
@@ -183,6 +193,16 @@ export default function AdminCatalogPage() {
               </tbody>
             </table>
           )}
+          {products.data ? (
+            <Pager
+              page={products.data.page}
+              size={products.data.size}
+              totalElements={products.data.totalElements}
+              totalPages={products.data.totalPages}
+              onPage={setPage}
+              label="Product pages"
+            />
+          ) : null}
         </section>
       ) : null}
 

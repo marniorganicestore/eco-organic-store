@@ -52,7 +52,14 @@ describe('AdminOrdersPage', () => {
           headers: { 'Content-Type': 'application/json' }
         })
       }
-      return new Response(JSON.stringify(orders), {
+      return new Response(JSON.stringify({
+        items: orders,
+        page: 0,
+        size: 20,
+        totalElements: orders.length,
+        totalPages: 1,
+        hasNext: false
+      }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       })

@@ -2,6 +2,7 @@ package com.ecoorganicstore.review.web;
 
 import com.ecoorganicstore.common.security.AuthGuards;
 import com.ecoorganicstore.common.security.UserContextResolver;
+import com.ecoorganicstore.common.web.PageResponse;
 import com.ecoorganicstore.review.domain.Review;
 import com.ecoorganicstore.review.service.ReviewService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,6 +10,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,8 +23,10 @@ public class ReviewController {
     }
 
     @GetMapping("/api/products/{productId}/reviews")
-    public List<Review> productReviews(@PathVariable String productId) {
-        return reviewService.byProduct(productId);
+    public PageResponse<Review> productReviews(@PathVariable String productId,
+                                               @RequestParam(defaultValue = "0") int page,
+                                               @RequestParam(defaultValue = "8") int size) {
+        return map(reviewService.byProduct(productId, page, size));
     }
 
     @PostMapping("/api/reviews")
@@ -31,10 +35,21 @@ public class ReviewController {
         return reviewService.create(userId, reviewRequest.productId(), reviewRequest.rating(), reviewRequest.body());
     }
 
-    @GetMapping("/api/admin/reviews")
-    public List<ReviewResponse> queue(HttpServletRequest request, @RequestParam(required = false) String status) {
+    @GetMapping("/api/admin/reviews/summary")
+    public ReviewDeskResponse summary(HttpServletRequest request) {
         AuthGuards.requireAdmin(request);
-        return reviewService.forAdmin(status).stream().map(ReviewController::toResponse).toList();
+        return new ReviewDeskResponse(reviewService.hiddenCount());
+    }
+
+    @GetMapping("/api/admin/reviews")
+    public PageResponse<ReviewResponse> queue(HttpServletRequest request,
+                                              @RequestParam(required = false) String status,
+                                              @RequestParam(defaultValue = "0") int page,
+                                              @RequestParam(defaultValue = "20") int size) {
+        AuthGuards.requireAdmin(request);
+        Page<Review> reviews = reviewService.forAdmin(status, page, size);
+        return PageResponse.of(reviews.getContent().stream().map(ReviewController::toResponse).toList(),
+                reviews.getNumber(), reviews.getSize(), reviews.getTotalElements());
     }
 
     @PatchMapping("/api/admin/reviews/{reviewId}")
@@ -42,6 +57,10 @@ public class ReviewController {
                                  @Valid @RequestBody StatusRequest statusRequest) {
         AuthGuards.requireAdmin(request);
         return toResponse(reviewService.setStatus(reviewId, statusRequest.status()));
+    }
+
+    private static PageResponse<Review> map(Page<Review> page) {
+        return PageResponse.of(page.getContent(), page.getNumber(), page.getSize(), page.getTotalElements());
     }
 
     private static ReviewResponse toResponse(Review review) {
@@ -56,6 +75,7 @@ public class ReviewController {
                 review.getCreatedAt());
     }
 
+    public record ReviewDeskResponse(long hiddenCount) {}
     public record ReviewRequest(String productId, int rating, String body) {}
     public record StatusRequest(@NotBlank(message = "Choose a review status.") String status) {}
     public record ReviewResponse(

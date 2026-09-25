@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { ApiError } from '../../lib/api'
 import { formatWhen } from '../../lib/adminDesk'
-import { useAdminProducts } from '../../hooks/useAdminCatalog'
+import { useAdminProductLookup } from '../../hooks/useAdminCatalog'
 import { useAdminReviews, useModerateReview } from '../../hooks/useAdminReviews'
+import { Pager } from '../../components/layout/Pager'
+import { useClampPage } from '../../hooks/useClampPage'
 import { AdminPending } from '../../components/admin/AdminPending'
 import { StatusPill } from '../../components/admin/StatusPill'
 import { FormBanner } from '../../components/account/FormBanner'
@@ -11,20 +13,22 @@ import { PageShell, storeBtn, storeBtnGhost, storeCard } from '../../components/
 type Filter = 'HIDDEN' | 'VISIBLE' | 'ALL'
 
 export default function AdminReviewsPage() {
-  const reviews = useAdminReviews()
-  const products = useAdminProducts()
-  const moderate = useModerateReview()
   const [filter, setFilter] = useState<Filter>('HIDDEN')
+  const [page, setPage] = useState(0)
+  const reviews = useAdminReviews(page, filter === 'ALL' ? undefined : filter)
+  const productIds = useMemo(() => [...new Set((reviews.data?.items ?? []).map((review) => review.productId))], [reviews.data])
+  const products = useAdminProductLookup(productIds)
+  const moderate = useModerateReview()
   const [error, setError] = useState('')
   const pendingId = moderate.isPending ? moderate.variables?.reviewId : undefined
+  const visible = reviews.data?.items ?? []
+  useClampPage(page, reviews.data?.totalPages, setPage)
 
   const names = useMemo(() => {
     const map = new Map<string, string>()
     for (const product of products.data ?? []) map.set(product.id, product.name)
     return map
   }, [products.data])
-
-  const visible = (reviews.data ?? []).filter((review) => filter === 'ALL' || review.status === filter)
 
   async function setStatus(reviewId: string, status: 'VISIBLE' | 'HIDDEN') {
     setError('')
@@ -49,7 +53,7 @@ export default function AdminReviewsPage() {
               className={`rounded-md px-3 py-1.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
                 filter === value ? 'bg-emerald-700 text-white' : 'text-emerald-900 hover:bg-emerald-50'
               }`}
-              onClick={() => setFilter(value)}
+              onClick={() => { setFilter(value); setPage(0) }}
             >
               {value === 'ALL' ? 'All' : value === 'HIDDEN' ? 'Hidden' : 'Visible'}
             </button>
@@ -93,6 +97,16 @@ export default function AdminReviewsPage() {
             )
           })}
         </ul>
+      ) : null}
+      {reviews.data ? (
+        <Pager
+          page={reviews.data.page}
+          size={reviews.data.size}
+          totalElements={reviews.data.totalElements}
+          totalPages={reviews.data.totalPages}
+          onPage={setPage}
+          label="Review pages"
+        />
       ) : null}
     </PageShell>
   )

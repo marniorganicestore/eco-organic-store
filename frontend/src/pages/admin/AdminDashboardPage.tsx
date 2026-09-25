@@ -3,36 +3,28 @@ import { AdminPending } from '../../components/admin/AdminPending'
 import { StatusPill } from '../../components/admin/StatusPill'
 import { FormBanner } from '../../components/account/FormBanner'
 import { storeCard, PageShell } from '../../components/layout/PageShell'
-import { useAdminCategories, useAdminProducts } from '../../hooks/useAdminCatalog'
-import { useAdminInventory } from '../../hooks/useAdminInventory'
-import { useAdminOrders } from '../../hooks/useAdminOrders'
-import { useAdminPayments } from '../../hooks/useAdminPayments'
-import { useAdminReviews } from '../../hooks/useAdminReviews'
-import { formatInr, formatWhen, isLowStock, isSameLocalDay, stockForProduct } from '../../lib/adminDesk'
+import { useAdminProductLookup, useCatalogDesk } from '../../hooks/useAdminCatalog'
+import { useLowStock } from '../../hooks/useAdminInventory'
+import { useOrderDesk } from '../../hooks/useAdminOrders'
+import { usePaymentDesk } from '../../hooks/useAdminPayments'
+import { useReviewDesk } from '../../hooks/useAdminReviews'
+import { formatInr, formatWhen } from '../../lib/adminDesk'
 
 export default function AdminDashboardPage() {
-  const products = useAdminProducts()
-  const categories = useAdminCategories()
-  const inventory = useAdminInventory()
-  const orders = useAdminOrders()
-  const payments = useAdminPayments()
-  const reviews = useAdminReviews()
-  const loading = products.isPending || inventory.isPending || orders.isPending || reviews.isPending
-
-  const productRows = products.data ?? []
-  const stockRows = inventory.data ?? []
-  const orderRows = orders.data ?? []
-  const reviewRows = reviews.data ?? []
-  const today = orderRows.filter((order) => isSameLocalDay(order.createdAt))
-  const toPack = orderRows.filter((order) => order.orderStatus === 'CONFIRMED')
-  const low = productRows.filter((product) => product.active && isLowStock(stockForProduct(stockRows, product.id)))
-  const hidden = reviewRows.filter((review) => review.status === 'HIDDEN')
-  const pendingPayments = (payments.data ?? []).filter((payment) => payment.status === 'PENDING')
+  const catalog = useCatalogDesk()
+  const orders = useOrderDesk()
+  const payments = usePaymentDesk()
+  const reviews = useReviewDesk()
+  const lowStock = useLowStock()
+  const names = useAdminProductLookup((lowStock.data?.items ?? []).map((item) => item.productId))
+  const loading = catalog.isPending || orders.isPending || reviews.isPending || lowStock.isPending
+  const productName = new Map((names.data ?? []).map((product) => [product.id, product.name]))
+  const pendingPayments = payments.data?.pendingCount ?? 0
 
   return (
     <PageShell title="Overview" subtitle="Today's orders, stock that needs a refill, and reviews waiting for a look.">
       {loading ? <AdminPending label="Loading the store desk..." /> : null}
-      {products.isError || inventory.isError || orders.isError || reviews.isError ? (
+      {catalog.isError || lowStock.isError || orders.isError || reviews.isError ? (
         <div className="mb-4">
           <FormBanner tone="error">Some desk numbers could not be loaded. Open the section and try again.</FormBanner>
         </div>
@@ -40,23 +32,23 @@ export default function AdminDashboardPage() {
       {!loading ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric to="/admin/orders" label="Today's orders" value={orders.isError ? '—' : String(today.length)} hint={formatInr(today.reduce((sum, order) => sum + order.totalPaise, 0))} />
-            <Metric to="/admin/orders" label="Ready to pack" value={orders.isError ? '—' : String(toPack.length)} hint="Paid and waiting" />
-            <Metric to="/admin/inventory" label="Low stock" value={products.isError || inventory.isError ? '—' : String(low.length)} hint="10 or fewer available" />
-            <Metric to="/admin/reviews" label="Hidden reviews" value={reviews.isError ? '—' : String(hidden.length)} hint="Off the product page" />
+            <Metric to="/admin/orders" label="Today's orders" value={orders.isError ? '—' : String(orders.data?.todayCount ?? 0)} hint={formatInr(orders.data?.todayTotalPaise ?? 0)} />
+            <Metric to="/admin/orders" label="Ready to pack" value={orders.isError ? '—' : String(orders.data?.confirmedCount ?? 0)} hint="Paid and waiting" />
+            <Metric to="/admin/inventory" label="Low stock" value={lowStock.isError ? '—' : String(lowStock.data?.count ?? 0)} hint="10 or fewer available" />
+            <Metric to="/admin/reviews" label="Hidden reviews" value={reviews.isError ? '—' : String(reviews.data?.hiddenCount ?? 0)} hint="Off the product page" />
           </div>
           <p className="mt-4 text-sm text-slate-600">
-            {categories.data ? `${categories.data.length} categories · ${productRows.length} products. ` : null}
+            {catalog.data ? `${catalog.data.categoryCount} categories · ${catalog.data.productCount} products. ` : null}
             <Link className="font-medium text-emerald-800 underline-offset-2 hover:underline" to="/admin/payments">
-              {payments.isError ? 'Payments need a refresh.' : `${pendingPayments.length} payment${pendingPayments.length === 1 ? '' : 's'} still pending.`}
+              {payments.isError ? 'Payments need a refresh.' : `${pendingPayments} payment${pendingPayments === 1 ? '' : 's'} still pending.`}
             </Link>
           </p>
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             <section className={`${storeCard} p-5`}>
               <h2 className="font-semibold text-emerald-950">Ready to pack</h2>
-              {toPack.length === 0 ? <p className="mt-3 text-sm text-slate-600">Nothing is waiting to be packed.</p> : (
+              {(orders.data?.confirmed.length ?? 0) === 0 ? <p className="mt-3 text-sm text-slate-600">Nothing is waiting to be packed.</p> : (
                 <ul className="mt-3 space-y-2">
-                  {toPack.slice(0, 5).map((order) => (
+                  {orders.data?.confirmed.map((order) => (
                     <li key={order.id} className="flex items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-white/75 px-3 py-2 text-sm">
                       <span>
                         <span className="font-medium text-emerald-950">{order.orderNumber}</span>
@@ -70,25 +62,22 @@ export default function AdminDashboardPage() {
             </section>
             <section className={`${storeCard} p-5`}>
               <h2 className="font-semibold text-emerald-950">Low stock</h2>
-              {low.length === 0 ? <p className="mt-3 text-sm text-slate-600">Active products have enough on hand.</p> : (
+              {(lowStock.data?.items.length ?? 0) === 0 ? <p className="mt-3 text-sm text-slate-600">Active products have enough on hand.</p> : (
                 <ul className="mt-3 space-y-2">
-                  {low.slice(0, 5).map((product) => {
-                    const stock = stockForProduct(stockRows, product.id)
-                    return (
-                      <li key={product.id} className="flex items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-white/75 px-3 py-2 text-sm">
-                        <span className="font-medium text-emerald-950">{product.name}</span>
-                        <StatusPill status="LOW" label={`${stock.available} available`} />
-                      </li>
-                    )
-                  })}
+                  {lowStock.data?.items.map((item) => (
+                    <li key={item.productId} className="flex items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-white/75 px-3 py-2 text-sm">
+                      <span className="font-medium text-emerald-950">{productName.get(item.productId) ?? 'Product'}</span>
+                      <StatusPill status="LOW" label={`${item.available} available`} />
+                    </li>
+                  ))}
                 </ul>
               )}
             </section>
             <section className={`${storeCard} p-5 lg:col-span-2`}>
               <h2 className="font-semibold text-emerald-950">Orders placed today</h2>
-              {today.length === 0 ? <p className="mt-3 text-sm text-slate-600">No orders have come in today.</p> : (
+              {(orders.data?.today.length ?? 0) === 0 ? <p className="mt-3 text-sm text-slate-600">No orders have come in today.</p> : (
                 <ul className="mt-3 space-y-2">
-                  {today.slice(0, 6).map((order) => (
+                  {orders.data?.today.map((order) => (
                     <li key={order.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-100 bg-white/75 px-3 py-2 text-sm">
                       <span className="font-medium text-emerald-950">{order.orderNumber}</span>
                       <span className="text-slate-600">{formatWhen(order.createdAt)}</span>

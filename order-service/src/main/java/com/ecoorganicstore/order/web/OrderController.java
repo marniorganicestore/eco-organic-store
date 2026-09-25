@@ -2,6 +2,7 @@ package com.ecoorganicstore.order.web;
 
 import com.ecoorganicstore.common.security.AuthGuards;
 import com.ecoorganicstore.common.security.UserContextResolver;
+import com.ecoorganicstore.common.web.PageResponse;
 import com.ecoorganicstore.order.domain.Order;
 import com.ecoorganicstore.order.service.OrderService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,6 +10,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -27,9 +29,11 @@ public class OrderController {
     }
 
     @GetMapping("/api/orders")
-    public List<OrderSummaryResponse> orders(HttpServletRequest request) {
+    public PageResponse<OrderSummaryResponse> orders(HttpServletRequest request,
+                                                     @RequestParam(defaultValue = "0") int page,
+                                                     @RequestParam(defaultValue = "10") int size) {
         String userId = AuthGuards.requireUser(request).userId();
-        return orderService.ordersByUser(userId).stream().map(OrderController::toSummary).toList();
+        return map(orderService.ordersByUser(userId, page, size), OrderController::toSummary);
     }
 
     @GetMapping("/api/orders/{orderNumber}")
@@ -48,10 +52,24 @@ public class OrderController {
         return new PurchaseResponse(orderService.userPurchasedProduct(userId, productId));
     }
 
-    @GetMapping("/api/admin/orders")
-    public List<AdminOrderResponse> adminOrders(HttpServletRequest request) {
+    @GetMapping("/api/admin/orders/summary")
+    public OrderDeskResponse adminSummary(HttpServletRequest request) {
         AuthGuards.requireAdmin(request);
-        return orderService.allOrders().stream().map(OrderController::toAdmin).toList();
+        OrderService.OrderDesk desk = orderService.desk(Instant.now());
+        return new OrderDeskResponse(
+                desk.todayCount(),
+                desk.todayTotalPaise(),
+                desk.confirmedCount(),
+                desk.confirmed().stream().map(OrderController::toAdmin).toList(),
+                desk.today().stream().map(OrderController::toAdmin).toList());
+    }
+
+    @GetMapping("/api/admin/orders")
+    public PageResponse<AdminOrderResponse> adminOrders(HttpServletRequest request,
+                                                        @RequestParam(defaultValue = "0") int page,
+                                                        @RequestParam(defaultValue = "20") int size) {
+        AuthGuards.requireAdmin(request);
+        return map(orderService.allOrders(page, size), OrderController::toAdmin);
     }
 
     @PatchMapping("/api/admin/orders/{orderNumber}")
@@ -84,6 +102,10 @@ public class OrderController {
                 order.getCreatedAt());
     }
 
+    private static <T> PageResponse<T> map(Page<Order> page, java.util.function.Function<Order, T> mapper) {
+        return PageResponse.of(page.getContent().stream().map(mapper).toList(), page.getNumber(), page.getSize(), page.getTotalElements());
+    }
+
     private static List<LineResponse> linesOf(Order order) {
         if (order.getLines() == null) return List.of();
         return order.getLines().stream()
@@ -91,6 +113,12 @@ public class OrderController {
                 .toList();
     }
 
+    public record OrderDeskResponse(
+            long todayCount,
+            long todayTotalPaise,
+            long confirmedCount,
+            List<AdminOrderResponse> confirmed,
+            List<AdminOrderResponse> today) {}
     public record CheckoutRequest(String shippingAddress) {}
     public record PurchaseResponse(boolean purchased) {}
     public record StatusRequest(@NotBlank(message = "Choose the next order status.") String status) {}

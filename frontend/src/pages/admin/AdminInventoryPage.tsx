@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Pager } from '../../components/layout/Pager'
+import { useClampPage } from '../../hooks/useClampPage'
 import { ApiError } from '../../lib/api'
 import { isLowStock, onHandIssue, stockForProduct } from '../../lib/adminDesk'
 import { useAdminProducts } from '../../hooks/useAdminCatalog'
@@ -9,8 +11,11 @@ import { FormBanner } from '../../components/account/FormBanner'
 import { PageShell, storeBtn, storeCard, storeInput } from '../../components/layout/PageShell'
 
 export default function AdminInventoryPage() {
-  const products = useAdminProducts()
-  const inventory = useAdminInventory()
+  const [page, setPage] = useState(0)
+  const products = useAdminProducts(page)
+  const productIds = (products.data?.items ?? []).map((product) => product.id)
+  useClampPage(page, products.data?.totalPages, setPage)
+  const inventory = useAdminInventory(productIds)
   const adjust = useAdjustStock()
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
@@ -42,22 +47,23 @@ export default function AdminInventoryPage() {
     }
   }
 
-  const rows = (products.data ?? []).map((product) => {
+  const rows = (products.data?.items ?? []).map((product) => {
     const stock = stockForProduct(inventory.data ?? [], product.id)
     const typed = drafts[product.id]
     const onHandText = typed ?? String(stock.onHand)
     return { product, stock, onHandText, dirty: typed !== undefined && Number(typed) !== stock.onHand }
   })
+  const stockReady = productIds.length === 0 || Boolean(inventory.data)
 
   return (
     <PageShell
       title="Inventory"
       subtitle="On hand is what you hold. Reserved is held for unpaid checkout. Available is on hand minus reserved."
     >
-      {products.isPending || inventory.isPending ? <AdminPending label="Loading inventory..." /> : null}
+      {products.isPending || (productIds.length > 0 && inventory.isPending) ? <AdminPending label="Loading inventory..." /> : null}
       {products.isError || inventory.isError ? <FormBanner tone="error">Unable to load inventory. Refresh and try again.</FormBanner> : null}
       {error ? <div className="mb-4"><FormBanner tone="error">{error}</FormBanner></div> : null}
-      {products.data && inventory.data ? (
+      {products.data && stockReady ? (
         rows.length === 0 ? (
           <p className={`${storeCard} p-6 text-sm text-slate-600`}>Add a product in the catalog before setting stock.</p>
         ) : (
@@ -123,6 +129,16 @@ export default function AdminInventoryPage() {
             </table>
           </div>
         )
+      ) : null}
+      {products.data ? (
+        <Pager
+          page={products.data.page}
+          size={products.data.size}
+          totalElements={products.data.totalElements}
+          totalPages={products.data.totalPages}
+          onPage={setPage}
+          label="Inventory pages"
+        />
       ) : null}
     </PageShell>
   )

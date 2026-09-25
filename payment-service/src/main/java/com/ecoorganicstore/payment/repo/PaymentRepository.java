@@ -7,4 +7,5 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 public interface PaymentRepository extends MongoRepository<Payment, String> {
     Optional<Payment> findByOrderNumber(String orderNumber);
     Optional<Payment> findByRazorpayOrderId(String razorpayOrderId);
+    long countByStatus(String status);
 }

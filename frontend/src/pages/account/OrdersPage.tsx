@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { Pager } from '../../components/layout/Pager'
 import { storeBtn, storeCard, PageShell } from '../../components/layout/PageShell'
 import { AccountSkeleton } from '../../components/account/AccountLayout'
 import { FormBanner } from '../../components/account/FormBanner'
@@ -7,6 +9,8 @@ import { OrderLineRow, type OrderLineView } from '../../components/order/OrderLi
 import { api } from '../../lib/api'
 import { formatInr } from '../../lib/cart'
 import { STORE_MAILBOX } from '../../lib/mail'
+import { ORDER_PAGE_SIZE, pageQuery, type PageResult } from '../../lib/page'
+import { useClampPage } from '../../hooks/useClampPage'
 
 type OrderSummary = {
   id: string
@@ -38,23 +42,26 @@ function placedOn(iso: string): string {
 }
 
 export default function OrdersPage() {
+  const [page, setPage] = useState(0)
   const orders = useQuery({
-    queryKey: ['orders'],
-    queryFn: () => api.get<OrderSummary[]>('/orders')
+    queryKey: ['orders', page],
+    queryFn: () => api.get<PageResult<OrderSummary>>(`/orders${pageQuery(page, ORDER_PAGE_SIZE)}`)
   })
+  const rows = orders.data?.items ?? []
+  useClampPage(page, orders.data?.totalPages, setPage)
 
   return (
     <PageShell title="My orders" subtitle="Track packed, shipped, and delivered orders.">
       {orders.isPending ? <AccountSkeleton /> : null}
       {orders.isError ? <FormBanner tone="error">Unable to load orders. Refresh and try again.</FormBanner> : null}
-      {orders.data && orders.data.length === 0 ? (
+      {orders.data && rows.length === 0 ? (
         <section className={`${storeCard} p-8`}>
           <h2 className="font-semibold text-emerald-950">No orders yet</h2>
           <p className="mt-1 text-sm text-slate-600">When you check out, the order shows up here.</p>
           <Link to="/shop" className={`${storeBtn} mt-4 inline-block`}>Browse the shop</Link>
         </section>
       ) : null}
-      {orders.data && orders.data.length > 0 ? (
+      {rows.length > 0 ? (
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
             Receipts and shipping notes come from {STORE_MAILBOX}.{' '}
@@ -63,7 +70,7 @@ export default function OrdersPage() {
             </Link>
           </p>
           <ul className="space-y-3">
-            {orders.data.map((order) => (
+            {rows.map((order) => (
               <li key={order.id} className={`${storeCard} p-4`}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -83,6 +90,16 @@ export default function OrdersPage() {
               </li>
             ))}
           </ul>
+          {orders.data ? (
+            <Pager
+              page={orders.data.page}
+              size={orders.data.size}
+              totalElements={orders.data.totalElements}
+              totalPages={orders.data.totalPages}
+              onPage={setPage}
+              label="Order pages"
+            />
+          ) : null}
         </div>
       ) : null}
     </PageShell>

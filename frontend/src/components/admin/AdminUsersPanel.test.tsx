@@ -53,7 +53,14 @@ describe('AdminUsersPanel', () => {
           roles: ['CUSTOMER', 'ADMIN']
         }), { status: 200, headers: { 'Content-Type': 'application/json' } })
       }
-      return new Response(JSON.stringify(accounts), {
+      return new Response(JSON.stringify({
+        items: accounts,
+        page: 0,
+        size: 20,
+        totalElements: accounts.length,
+        totalPages: 1,
+        hasNext: false
+      }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       })

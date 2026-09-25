@@ -3,6 +3,8 @@ import { ApiError } from '../../lib/api'
 import { ADMIN_ROLE, CUSTOMER_ROLE, isAdmin, roleLabel } from '../../lib/userDisplay'
 import { useAuthStore } from '../../store/authStore'
 import { useAdminAccounts, useUpdateAccountAccess } from '../../hooks/useAdminUsers'
+import { Pager } from '../layout/Pager'
+import { useClampPage } from '../../hooks/useClampPage'
 import { storeBtnGhost, storeCard } from '../layout/PageShell'
 import { FormBanner } from '../account/FormBanner'
 import { UserAvatar } from '../account/UserAvatar'
@@ -15,7 +17,10 @@ function roleChip(selected: boolean): string {
 
 export function AdminUsersPanel() {
   const currentUserId = useAuthStore((state) => state.user?.userId)
-  const accounts = useAdminAccounts()
+  const [page, setPage] = useState(0)
+  const accounts = useAdminAccounts(page)
+  const people = accounts.data?.items ?? []
+  useClampPage(page, accounts.data?.totalPages, setPage)
   const update = useUpdateAccountAccess()
   const [error, setError] = useState('')
   const pendingId = update.isPending ? update.variables?.userId : undefined
@@ -52,12 +57,12 @@ export function AdminUsersPanel() {
           <FormBanner tone="error">Unable to load accounts. Refresh and try again.</FormBanner>
         </div>
       ) : null}
-      {accounts.data?.length === 0 ? (
+      {accounts.data && people.length === 0 ? (
         <p className="mt-4 text-sm text-slate-600">No accounts yet. Customers appear here after they register.</p>
       ) : null}
-      {accounts.data && accounts.data.length > 0 ? (
+      {people.length > 0 ? (
         <ul className="mt-4 space-y-3">
-          {accounts.data.map((account) => {
+          {people.map((account) => {
             const admin = isAdmin(account.roles)
             const self = account.userId === currentUserId
             const pending = pendingId === account.userId
@@ -115,6 +120,16 @@ export function AdminUsersPanel() {
             )
           })}
         </ul>
+      ) : null}
+      {accounts.data ? (
+        <Pager
+          page={accounts.data.page}
+          size={accounts.data.size}
+          totalElements={accounts.data.totalElements}
+          totalPages={accounts.data.totalPages}
+          onPage={setPage}
+          label="Account pages"
+        />
       ) : null}
     </section>
   )

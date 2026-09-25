@@ -81,13 +81,27 @@ public class InventoryService {
         return stockRepository.save(stock);
     }
 
-    public List<Stock> list() {
-        return stockRepository.findAll();
+    public List<Stock> forProducts(List<String> productIds) {
+        if (productIds == null || productIds.isEmpty()) return List.of();
+        List<String> distinct = productIds.stream()
+                .filter(id -> id != null && !id.isBlank())
+                .map(String::trim)
+                .distinct()
+                .limit(48)
+                .toList();
+        if (distinct.isEmpty()) return List.of();
+        return stockRepository.findByProductIdIn(distinct);
     }
 
-    public List<Stock> getLowStock(int threshold) {
-        return stockRepository.findAll().stream().filter(s -> s.available() <= threshold).toList();
+    public LowStockReport lowStock(int threshold) {
+        int safeThreshold = Math.max(0, Math.min(threshold, 100));
+        List<Stock> matches = stockRepository.findAll().stream()
+                .filter(stock -> stock.available() <= safeThreshold)
+                .toList();
+        return new LowStockReport(matches.size(), matches.stream().limit(5).toList());
     }
+
+    public record LowStockReport(long count, List<Stock> items) {}
 
     public List<Stock> stockByProducts(List<String> productIds) {
         return stockRepository.findByProductIdIn(productIds);

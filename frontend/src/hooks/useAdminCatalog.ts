@@ -8,14 +8,31 @@ import {
   type CategoryDraft,
   type ProductDraft
 } from '../lib/adminDesk'
+import { ADMIN_PAGE_SIZE, idsQuery, pageQuery, type PageResult } from '../lib/page'
 
 export const adminProductsKey = ['admin', 'products'] as const
 export const adminCategoriesKey = ['admin', 'categories'] as const
 
-export function useAdminProducts() {
+export function useAdminProducts(page: number, q = '') {
   return useQuery({
-    queryKey: adminProductsKey,
-    queryFn: () => api.get<AdminProduct[]>('/admin/catalog/products')
+    queryKey: [...adminProductsKey, page, q],
+    queryFn: () => api.get<PageResult<AdminProduct>>(`/admin/catalog/products${pageQuery(page, ADMIN_PAGE_SIZE, { q: q || undefined })}`)
+  })
+}
+
+export function useAdminProductLookup(ids: string[]) {
+  const key = [...ids].filter(Boolean).sort().join(',')
+  return useQuery({
+    queryKey: ['admin', 'product-lookup', key],
+    queryFn: () => api.get<AdminProduct[]>(`/admin/catalog/products/lookup?${idsQuery(ids)}`),
+    enabled: ids.length > 0
+  })
+}
+
+export function useCatalogDesk() {
+  return useQuery({
+    queryKey: ['admin', 'desk', 'catalog'],
+    queryFn: () => api.get<{ productCount: number; categoryCount: number }>('/admin/catalog/summary')
   })
 }
 

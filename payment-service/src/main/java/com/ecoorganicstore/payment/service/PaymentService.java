@@ -21,6 +21,10 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import com.ecoorganicstore.common.web.PageWindow;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -174,8 +178,15 @@ public class PaymentService {
         return URI.create(paid ? successUrl : cancelUrl);
     }
 
-    public List<Payment> list() {
-        return paymentRepository.findAll();
+    public Page<Payment> list(int page, int size) {
+        return paymentRepository.findAll(PageRequest.of(
+                PageWindow.page(page),
+                PageWindow.size(size, PageWindow.ADMIN_SIZE),
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+    }
+
+    public long pendingCount() {
+        return paymentRepository.countByStatus("PENDING");
     }
 
     private void applyOutcome(String eventId, String orderNumber, String status) {

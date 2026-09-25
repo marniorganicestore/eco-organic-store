@@ -6,9 +6,13 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.client.RestClient;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -23,15 +27,16 @@ class OrderServiceTest {
     }
 
     @Test
-    void ordersByUserReturnsNewestFirstWithoutSortingInTheDatabase() {
-        Order older = order("HC-OLD", Instant.parse("2026-01-01T00:00:00Z"));
+    void ordersByUserReadsOnlyTheRequestedPageForThatCustomer() {
         Order newer = order("HC-NEW", Instant.parse("2026-06-01T00:00:00Z"));
-        Order undated = order("HC-NONE", null);
-        when(repository.findByUserId("user-1")).thenReturn(List.of(older, undated, newer));
+        when(repository.findByUserId(eq("user-1"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(newer), org.springframework.data.domain.PageRequest.of(0, 10), 40));
 
-        List<String> numbers = service.ordersByUser("user-1").stream().map(Order::getOrderNumber).toList();
+        var page = service.ordersByUser("user-1", 0, 10);
 
-        assertEquals(List.of("HC-NEW", "HC-OLD", "HC-NONE"), numbers);
+        assertEquals(List.of("HC-NEW"), page.getContent().stream().map(Order::getOrderNumber).toList());
+        assertEquals(40, page.getTotalElements());
+        assertEquals(10, page.getSize());
     }
 
     private static Order order(String number, Instant createdAt) {

@@ -8,9 +8,11 @@ import com.ecoorganicstore.order.domain.Order;
 import com.ecoorganicstore.order.repo.OrderRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ecoorganicstore.common.web.PageWindow;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,6 +21,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -174,12 +179,28 @@ public class OrderService {
         }
     }
 
-    public List<Order> ordersByUser(String userId) {
-        return orderRepository.findByUserId(userId).stream().sorted(NEWEST_FIRST).toList();
+    public Page<Order> ordersByUser(String userId, int page, int size) {
+        return orderRepository.findByUserId(userId, newest(page, size, PageWindow.ORDER_SIZE));
     }
 
-    public List<Order> allOrders() {
-        return orderRepository.findAll().stream().sorted(NEWEST_FIRST).toList();
+    public Page<Order> allOrders(int page, int size) {
+        return orderRepository.findAll(newest(page, size, PageWindow.ADMIN_SIZE));
+    }
+
+    public OrderDesk desk(Instant now) {
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
+        LocalDate day = LocalDate.ofInstant(now == null ? Instant.now() : now, zone);
+        Instant start = day.atStartOfDay(zone).toInstant();
+        Instant end = day.plusDays(1).atStartOfDay(zone).toInstant();
+        List<Order> today = orderRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(start, end);
+        long todayTotal = today.stream().mapToLong(Order::getTotalPaise).sum();
+        Page<Order> confirmed = orderRepository.findByOrderStatus("CONFIRMED", newest(0, 5, 5));
+        return new OrderDesk(
+                today.size(),
+                todayTotal,
+                confirmed.getTotalElements(),
+                confirmed.getContent(),
+                today.stream().limit(6).toList());
     }
 
     public Order orderByNumber(String userId, String orderNumber) {
@@ -218,8 +239,14 @@ public class OrderService {
         return saved;
     }
 
-    private static final Comparator<Order> NEWEST_FIRST =
-            Comparator.comparing(Order::getCreatedAt, Comparator.nullsLast(Comparator.<Instant>reverseOrder()));
+    private static PageRequest newest(int page, int size, int fallback) {
+        return PageRequest.of(
+                PageWindow.page(page),
+                PageWindow.size(size, fallback),
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+    }
+
+    public record OrderDesk(long todayCount, long todayTotalPaise, long confirmedCount, List<Order> confirmed, List<Order> today) {}
 
     public record PaymentSession(String paymentId, String orderId, long amount, String currency, String keyId, String checkoutUrl) {}
 
