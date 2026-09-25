@@ -13,6 +13,8 @@ public class PasswordResetToken {
     private String userId;
     @Indexed(unique = true)
     private String tokenHash;
+    /** TTL of 0 seconds: MongoDB deletes the token when this instant is reached. */
+    @Indexed(expireAfter = "0s")
     private Instant expiresAt;
 
     public String getId() { return id; }
