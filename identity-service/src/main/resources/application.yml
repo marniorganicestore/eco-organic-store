@@ -3,6 +3,10 @@ server:
 spring:
   application:
     name: identity-service
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/identity}
   data:

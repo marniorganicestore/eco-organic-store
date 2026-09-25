@@ -2,6 +2,7 @@ package com.ecoorganicstore.catalog.service;
 
 import com.ecoorganicstore.catalog.domain.MediaAsset;
 import com.ecoorganicstore.catalog.repo.MediaRepository;
+import com.ecoorganicstore.common.media.ImageTypes;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

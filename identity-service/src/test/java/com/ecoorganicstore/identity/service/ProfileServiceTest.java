@@ -1,6 +1,7 @@
 package com.ecoorganicstore.identity.service;
 
 import com.ecoorganicstore.identity.domain.Address;
+import com.ecoorganicstore.identity.domain.AvatarRef;
 import com.ecoorganicstore.identity.domain.User;
 import com.ecoorganicstore.identity.repo.UserRepository;
 import com.ecoorganicstore.identity.web.ProfileDtos.AddressRequest;
@@ -17,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ProfileServiceTest {
@@ -61,6 +64,41 @@ class ProfileServiceTest {
         assertNull(updated.getAvatar());
         assertNull(updated.getPhone());
         assertEquals("Asha", updated.getName());
+        assertTrue(updated.hasChosenAvatar());
+    }
+
+    @Test
+    void replacePhotoStoresANewImageAndDropsThePreviousOne() {
+        User user = user();
+        user.setAvatar(AvatarRef.path("11111111-1111-1111-1111-111111111111"));
+        AvatarService avatars = mock(AvatarService.class);
+        when(avatars.store(any())).thenReturn(new AvatarService.Stored(
+                "22222222-2222-2222-2222-222222222222",
+                AvatarRef.path("22222222-2222-2222-2222-222222222222"),
+                "image/jpeg",
+                12));
+        ProfileService service = service(user, avatars);
+
+        User updated = service.replacePhoto("u1", new byte[] {1, 2, 3});
+
+        assertEquals(AvatarRef.path("22222222-2222-2222-2222-222222222222"), updated.getAvatar());
+        assertTrue(updated.hasChosenAvatar());
+        verify(avatars).deleteQuietly(AvatarRef.path("11111111-1111-1111-1111-111111111111"));
+    }
+
+    @Test
+    void removePhotoClearsTheLinkAndTheStoredFile() {
+        User user = user();
+        user.setAvatar(AvatarRef.path("11111111-1111-1111-1111-111111111111"));
+        AvatarService avatars = mock(AvatarService.class);
+        ProfileService service = service(user, avatars);
+
+        User updated = service.removePhoto("u1");
+
+        assertNull(updated.getAvatar());
+        assertTrue(updated.hasChosenAvatar());
+        verify(avatars).deleteQuietly(AvatarRef.path("11111111-1111-1111-1111-111111111111"));
+        verify(avatars, never()).store(any());
     }
 
     @Test
@@ -126,10 +164,14 @@ class ProfileServiceTest {
     }
 
     private static ProfileService service(User user) {
+        return service(user, mock(AvatarService.class));
+    }
+
+    private static ProfileService service(User user, AvatarService avatars) {
         UserRepository repository = mock(UserRepository.class);
         when(repository.findById("u1")).thenReturn(Optional.of(user));
         when(repository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        return new ProfileService(repository);
+        return new ProfileService(repository, avatars);
     }
 
     private static User user() {

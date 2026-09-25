@@ -1,8 +1,8 @@
 package com.ecoorganicstore.catalog.web;
 
 import com.ecoorganicstore.catalog.domain.MediaAsset;
-import com.ecoorganicstore.catalog.service.ImageTypes;
 import com.ecoorganicstore.catalog.service.MediaService;
+import com.ecoorganicstore.common.media.ImageTypes;
 import com.ecoorganicstore.catalog.service.MediaService.StoredMedia;
 import com.ecoorganicstore.common.security.AuthGuards;
 import jakarta.servlet.http.HttpServletRequest;

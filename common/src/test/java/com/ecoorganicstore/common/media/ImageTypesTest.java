@@ -1,4 +1,4 @@
-package com.ecoorganicstore.catalog.service;
+package com.ecoorganicstore.common.media;
 
 import org.junit.jupiter.api.Test;
 

@@ -27,6 +27,30 @@ export function useUpdateProfile() {
   })
 }
 
+export function useUploadAvatar() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: profileApi.uploadAvatar,
+    onSuccess: (profile) => cacheProfile(queryClient, profile)
+  })
+}
+
+export function useRemoveAvatar() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: profileApi.removeAvatar,
+    onSuccess: (profile) => cacheProfile(queryClient, profile)
+  })
+}
+
+export function useAvatarLink() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: profileApi.useAvatarLink,
+    onSuccess: (profile) => cacheProfile(queryClient, profile)
+  })
+}
+
 export function useSaveAddress(addressId?: string) {
   const queryClient = useQueryClient()
   return useMutation({

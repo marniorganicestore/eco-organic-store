@@ -50,6 +50,7 @@ describe('ProfilePage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Asha Rao' })).toBeTruthy()
     expect(screen.getByText(/is your sign-in address/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Upload photo' })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'A' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save profile' }))
 

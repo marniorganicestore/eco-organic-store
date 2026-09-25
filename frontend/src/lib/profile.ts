@@ -73,13 +73,16 @@ export function isDeliverableAddress(address: Address): boolean {
   )
 }
 
-export function validateProfile(input: { name: string; phone: string; avatar: string }): string | null {
+const OWNED_AVATAR = /^\/api\/avatars\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function validateProfile(input: { name: string; phone: string; avatar?: string }): string | null {
   const name = input.name.trim()
   if (name.length < 2 || name.length > 80) return 'Name must be 2–80 characters.'
   const phone = input.phone.trim()
   if (phone && !PHONE.test(phone)) return 'Enter a valid Indian mobile number.'
-  const avatar = input.avatar.trim()
+  const avatar = input.avatar?.trim() ?? ''
   if (avatar) {
+    if (OWNED_AVATAR.test(avatar)) return null
     if (avatar.length > 1000) return 'Avatar link is too long.'
     try {
       const url = new URL(avatar)
@@ -125,7 +128,10 @@ export function syncSessionUser(profile: Profile): void {
 
 export const profileApi = {
   get: () => api.get<Profile>('/me'),
-  update: (body: { name: string; phone: string; avatar: string }) => api.patch<Profile>('/me', body),
+  update: (body: { name: string; phone: string }) => api.patch<Profile>('/me', body),
+  uploadAvatar: (file: File) => api.upload<Profile>('/me/avatar', file),
+  removeAvatar: () => api.delete<Profile>('/me/avatar'),
+  useAvatarLink: (avatar: string) => api.patch<Profile>('/me', { avatar }),
   addAddress: (body: AddressInput) => api.post<Profile>('/me/addresses', body),
   updateAddress: (id: string, body: AddressInput) => api.patch<Profile>(`/me/addresses/${encodeURIComponent(id)}`, body),
   removeAddress: (id: string) => api.delete<Profile>(`/me/addresses/${encodeURIComponent(id)}`),

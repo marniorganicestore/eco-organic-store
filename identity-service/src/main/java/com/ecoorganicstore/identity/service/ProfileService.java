@@ -1,6 +1,7 @@
 package com.ecoorganicstore.identity.service;
 
 import com.ecoorganicstore.identity.domain.Address;
+import com.ecoorganicstore.identity.domain.AvatarRef;
 import com.ecoorganicstore.identity.domain.IndianStates;
 import com.ecoorganicstore.identity.domain.User;
 import com.ecoorganicstore.identity.repo.UserRepository;
@@ -20,9 +21,11 @@ public class ProfileService {
     private static final Pattern PIN = Pattern.compile("[1-9][0-9]{5}");
 
     private final UserRepository userRepository;
+    private final AvatarService avatarService;
 
-    public ProfileService(UserRepository userRepository) {
+    public ProfileService(UserRepository userRepository, AvatarService avatarService) {
         this.userRepository = userRepository;
+        this.avatarService = avatarService;
     }
 
     public User get(String userId) {
@@ -39,12 +42,26 @@ public class ProfileService {
             user.setName(requireLength(request.name(), 2, 80, "Name must be 2–80 characters."));
         }
         if (request.avatar() != null) {
-            user.setAvatar(normalizeAvatar(request.avatar()));
+            String next = normalizeAvatar(request.avatar());
+            replaceAvatar(user, next);
         }
         if (request.phone() != null) {
             user.setPhone(normalizePhone(request.phone()));
         }
         normalizeDefaults(user);
+        return userRepository.save(user);
+    }
+
+    public User replacePhoto(String userId, byte[] bytes) {
+        User user = requireUser(userId);
+        AvatarService.Stored stored = avatarService.store(bytes);
+        replaceAvatar(user, stored.url());
+        return userRepository.save(user);
+    }
+
+    public User removePhoto(String userId) {
+        User user = requireUser(userId);
+        replaceAvatar(user, null);
         return userRepository.save(user);
     }
 
@@ -157,10 +174,22 @@ public class ProfileService {
         return true;
     }
 
+    private void replaceAvatar(User user, String next) {
+        String previous = user.getAvatar();
+        if (previous != null && !previous.equals(next)) {
+            avatarService.deleteQuietly(previous);
+        }
+        user.setAvatar(next);
+        user.setAvatarChosen(true);
+    }
+
     private static String normalizeAvatar(String avatar) {
         String trimmed = avatar.trim();
         if (trimmed.isEmpty()) {
             return null;
+        }
+        if (AvatarRef.isOwned(trimmed)) {
+            return trimmed;
         }
         if (trimmed.length() > 1000) {
             throw new IllegalArgumentException("Avatar link is too long.");

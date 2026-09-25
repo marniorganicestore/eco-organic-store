@@ -22,6 +22,8 @@ describe('profile helpers', () => {
   it('rejects an incomplete profile and an unknown state', () => {
     expect(validateProfile({ name: 'A', phone: '', avatar: '' })).toBe('Name must be 2–80 characters.')
     expect(validateProfile({ name: 'Asha', phone: '12345', avatar: '' })).toBe('Enter a valid Indian mobile number.')
+    expect(validateProfile({ name: 'Asha', phone: '', avatar: 'javascript:alert(1)' })).toBe('Avatar must be an http(s) link.')
+    expect(validateProfile({ name: 'Asha', phone: '', avatar: '/api/avatars/11111111-1111-1111-1111-111111111111' })).toBeNull()
     expect(validateAddress({ ...home, state: 'Narnia' })).toBe('Choose a state or union territory.')
     expect(isDeliverableAddress({ ...home, postalCode: '000000' })).toBe(false)
   })

@@ -11,6 +11,8 @@ import com.ecoorganicstore.identity.web.ProfileDtos.UpdateProfileRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -18,7 +20,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/me")
@@ -39,6 +43,23 @@ public class ProfileController {
     @PatchMapping
     public ProfileResponse update(HttpServletRequest request, @Valid @RequestBody UpdateProfileRequest body) {
         return ProfileMapper.toProfile(profileService.update(AuthGuards.requireUser(request).userId(), body));
+    }
+
+    @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ProfileResponse uploadAvatar(HttpServletRequest request, @RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Choose a photo to upload.");
+        }
+        try {
+            return ProfileMapper.toProfile(profileService.replacePhoto(AuthGuards.requireUser(request).userId(), file.getBytes()));
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("Choose a photo to upload.");
+        }
+    }
+
+    @DeleteMapping("/avatar")
+    public ProfileResponse removeAvatar(HttpServletRequest request) {
+        return ProfileMapper.toProfile(profileService.removePhoto(AuthGuards.requireUser(request).userId()));
     }
 
     @PostMapping("/password")

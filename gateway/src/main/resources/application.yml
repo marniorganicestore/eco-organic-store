@@ -20,7 +20,7 @@ spring:
             - id: identity
               uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
               predicates:
-                - Path=/api/auth/**,/api/me,/api/me/**,/api/admin/users,/api/admin/users/**
+                - Path=/api/auth/**,/api/me,/api/me/**,/api/avatars/**,/api/admin/users,/api/admin/users/**
             - id: review-product-routes
               uri: ${REVIEW_SERVICE_URL:http://localhost:8087}
               predicates:

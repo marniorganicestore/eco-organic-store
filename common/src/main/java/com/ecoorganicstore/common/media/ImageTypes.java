@@ -1,4 +1,4 @@
-package com.ecoorganicstore.catalog.service;
+package com.ecoorganicstore.common.media;
 
 /**
  * Accepts only raster photos. The bytes are sniffed so a renamed file cannot be stored and served.

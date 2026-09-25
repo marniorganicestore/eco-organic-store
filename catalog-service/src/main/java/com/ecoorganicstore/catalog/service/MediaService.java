@@ -2,6 +2,7 @@ package com.ecoorganicstore.catalog.service;
 
 import com.ecoorganicstore.catalog.domain.MediaAsset;
 import com.ecoorganicstore.catalog.repo.MediaRepository;
+import com.ecoorganicstore.common.media.ImageTypes;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 

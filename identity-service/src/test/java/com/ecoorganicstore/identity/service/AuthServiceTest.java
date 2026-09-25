@@ -122,6 +122,30 @@ class AuthServiceTest {
     }
 
     @Test
+    void googleLoginKeepsAPhotoTheCustomerChose() {
+        UserRepository userRepository = mock(UserRepository.class);
+        JwtService jwtService = mock(JwtService.class);
+        AuthService authService = new AuthService(userRepository, mock(PasswordEncoder.class), jwtService, false, "Lax", AccountMail.none(), mock(PasswordResets.class));
+        User existing = new User();
+        existing.setId("u-1");
+        existing.setEmail("user@eco-organic-store.com");
+        existing.setName("User");
+        existing.setAvatar("/api/avatars/11111111-1111-1111-1111-111111111111");
+        existing.setAvatarChosen(true);
+        existing.setRoles(List.of("CUSTOMER"));
+        when(userRepository.findByEmail("user@eco-organic-store.com")).thenReturn(Optional.of(existing));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtService.createAccessToken(eq("u-1"), eq("user@eco-organic-store.com"), anyList(), anyLong())).thenReturn("jwt-token");
+        when(jwtService.createRefreshToken(eq("u-1"), eq("user@eco-organic-store.com"), anyList(), anyLong(), eq(0)))
+                .thenReturn("refresh-token");
+
+        var result = authService.googleLogin(
+                "user@eco-organic-store.com", "User", "sub-1", "https://img.test/google.png", new MockHttpServletResponse());
+
+        assertEquals("/api/avatars/11111111-1111-1111-1111-111111111111", result.avatar());
+    }
+
+    @Test
     void logoutRevokesRefreshFamilyAndClearsCookie() {
         UserRepository userRepository = mock(UserRepository.class);
         JwtService jwtService = new JwtService(SECRET);

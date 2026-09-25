@@ -16,6 +16,8 @@ public class User {
     private String email;
     private String name;
     private String avatar;
+    /** True once the customer uploads, links, or removes a photo. Google must not overwrite that choice. */
+    private Boolean avatarChosen;
     private String phone;
     private String passwordHash;
     private String googleSub;
@@ -35,6 +37,8 @@ public class User {
     public void setName(String name) { this.name = name; }
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
+    public boolean hasChosenAvatar() { return Boolean.TRUE.equals(avatarChosen); }
+    public void setAvatarChosen(boolean avatarChosen) { this.avatarChosen = avatarChosen; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
     public String getPasswordHash() { return passwordHash; }

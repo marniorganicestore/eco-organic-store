@@ -112,7 +112,7 @@ public class AuthService {
             user.setName(normalizedEmail);
         }
         user.setGoogleSub(sub);
-        if (picture != null && !picture.isBlank()) {
+        if (!user.hasChosenAvatar() && picture != null && !picture.isBlank()) {
             user.setAvatar(picture);
         }
         user.setRoles(AccountRoles.forToken(user.getRoles()));
